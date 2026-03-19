@@ -3,17 +3,25 @@ import { isLoggedIn, logout, getMe } from './services/api'
 import Onboarding from './pages/Onboarding'
 import World from './pages/World'
 import Ego from './pages/Ego'
+import { HomeIcon, UserIcon } from './icons'
 import './index.css'
 
-const PAGES = {
-  world: { icon: '', label: '世界' },
-  ego: { icon: '', label: '本我' },
+const NAV_ITEMS = [
+  { key: 'world', label: '世界', Icon: HomeIcon },
+  { key: 'ego',   label: '本我', Icon: UserIcon  },
+]
+
+const PAGE_TITLES = {
+  world: 'TwinTalk · 世界',
+  ego:   'TwinTalk · 本我',
 }
 
 export default function App() {
   const [user, setUser] = useState(null)
-  const [page, setPage] = useState('ego')
+  const [page, setPage] = useState('world')
   const [loading, setLoading] = useState(true)
+  // hiddenNav is set to true by child pages (e.g. DM chat) that need full-screen
+  const [hiddenNav, setHiddenNav] = useState(false)
 
   useEffect(() => {
     if (isLoggedIn()) {
@@ -28,7 +36,7 @@ export default function App() {
 
   const handleLogin = (userData) => {
     setUser(userData)
-    setPage('ego')
+    setPage('world')
   }
 
   if (loading) {
@@ -39,7 +47,6 @@ export default function App() {
     )
   }
 
-  // Not logged in, or logged in but hasn't completed onboarding
   if (!user || !user.onboarding_completed) {
     return <Onboarding onLogin={handleLogin} />
   }
@@ -49,79 +56,51 @@ export default function App() {
     setUser(null)
   }
 
-  const renderPage = () => (page === 'world' ? <World /> : <Ego />)
-
   return (
-    <div className="app-layout">
-      <aside className="sidebar">
-        <div className="sidebar-logo">
-          <h1>TwinTalk</h1>
-        </div>
+    <div className="mobile-app">
+      {/* ── Fixed Header ── */}
+      {!hiddenNav && (
+        <header className="mobile-header">
+          <button className="icon-btn" onClick={handleLogout} aria-label="退出登录" title="退出">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
+            </svg>
+          </button>
+          <span className="mobile-header-title">Social</span>
+          <button className="icon-btn" aria-label="Compose new post">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+          </button>
+        </header>
+      )}
 
-        <nav className="sidebar-nav">
-          {Object.entries(PAGES).map(([key, { icon, label }]) => (
+      {/* ── Scrollable Content ── */}
+      <main className="mobile-main">
+        {page === 'world'
+          ? <World onHideNav={setHiddenNav} />
+          : <Ego />}
+      </main>
+
+      {/* ── Bottom Navigation ── */}
+      {!hiddenNav && (
+        <nav className="mobile-bottom-nav">
+          {NAV_ITEMS.map(({ key, label, Icon }) => (
             <button
               key={key}
-              className={`nav-item ${page === key ? 'active' : ''}`}
-              onClick={() => {
-                setPage(key)
-              }}
+              className={`mobile-nav-item ${page === key ? 'active' : ''}`}
+              onClick={() => setPage(key)}
+              aria-label={label}
             >
-              <span className="nav-icon">{icon}</span>
-              <span>{label}</span>
+              <Icon active={page === key} />
+              <span className="mobile-nav-label">{label}</span>
             </button>
           ))}
         </nav>
-
-        <div style={{
-          borderTop: '1px solid rgba(255,255,255,0.1)',
-          paddingTop: '16px',
-          marginTop: 'auto',
-        }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            padding: '8px 14px',
-            marginBottom: '8px',
-          }}>
-            <div style={{
-              width: '32px',
-              height: '32px',
-              background: 'var(--accent-danger)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '14px',
-              fontWeight: '900',
-              color: 'white',
-              flexShrink: 0,
-              fontFamily: "'Space Mono', monospace",
-            }}>
-              {(user.nickname || '?').charAt(0).toUpperCase()}
-            </div>
-            <div style={{ overflow: 'hidden' }}>
-              <div style={{ fontSize: '13px', fontWeight: '700', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                {user.nickname}
-              </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: "'Space Mono', monospace" }}>
-                v{user.profile_version || 0}
-              </div>
-            </div>
-          </div>
-          <button
-            className="nav-item"
-            onClick={handleLogout}
-            style={{ fontSize: '13px', color: 'var(--text-muted)' }}
-          >
-            <span>退出</span>
-          </button>
-        </div>
-      </aside>
-
-      <main className="main-content">
-        {renderPage()}
-      </main>
+      )}
     </div>
   )
 }

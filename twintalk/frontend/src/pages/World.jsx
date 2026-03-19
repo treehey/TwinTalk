@@ -9,12 +9,18 @@ import {
   sendDmMessage,
   startDmConversation,
 } from '../services/api'
+import { BackIcon, SendIcon } from '../icons'
 
 function formatTime(iso) {
   if (!iso) return ''
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
-  return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  const now = new Date()
+  const diffMs = now - d
+  if (diffMs < 60000) return '刚刚'
+  if (diffMs < 3600000) return `${Math.floor(diffMs / 60000)}分钟前`
+  if (diffMs < 86400000) return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  return `${d.getMonth() + 1}/${d.getDate()}`
 }
 
 function getAvatarLabel(name) {
@@ -22,16 +28,125 @@ function getAvatarLabel(name) {
   return name.trim().slice(0, 1).toUpperCase()
 }
 
-function DmPanel({
+/* ── DmInbox ─────────────────────────────────────────── */
+function DmInbox({
   conversations,
   pinnedConversationIds,
-  currentConversation,
-  messages,
   onOpenConversation,
   onTogglePinConversation,
-  onBackToList,
-  onSend,
-  onSuggest,
+  onDelete,
+}) {
+  const [searchKeyword, setSearchKeyword] = useState('')
+
+  const filtered = useMemo(() => {
+    const kw = searchKeyword.trim().toLowerCase()
+    if (!kw) return conversations
+    return conversations.filter((c) => {
+      return (c.partner?.nickname || '').toLowerCase().includes(kw)
+        || (c.source_community || '').toLowerCase().includes(kw)
+        || (c.last_message || '').toLowerCase().includes(kw)
+    })
+  }, [conversations, searchKeyword])
+
+  const sorted = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      const pinA = pinnedConversationIds.includes(a.id)
+      const pinB = pinnedConversationIds.includes(b.id)
+      if (pinA !== pinB) return pinA ? -1 : 1
+      const unreadDiff = (b.unread_count || 0) - (a.unread_count || 0)
+      if (unreadDiff !== 0) return unreadDiff
+      return Date.parse(b.last_message_at || '') - Date.parse(a.last_message_at || '')
+    })
+  }, [filtered, pinnedConversationIds])
+
+  const totalUnread = conversations.reduce((s, c) => s + (c.unread_count || 0), 0)
+
+  return (
+    <div className="dm-inbox-shell">
+      {/* Toolbar */}
+      <div className="dm-inbox-toolbar">
+        <input
+          className="dm-inbox-search"
+          type="text"
+          placeholder="搜索联系人 / 消息"
+          value={searchKeyword}
+          onChange={(e) => setSearchKeyword(e.target.value)}
+        />
+      </div>
+
+      {sorted.length > 0 && (
+        <div className="dm-inbox-stats">
+          {sorted.length} 个会话 · 未读 {totalUnread} · 置顶 {pinnedConversationIds.length}
+        </div>
+      )}
+
+      <div className="dm-inbox-list">
+        {sorted.length === 0 ? (
+          <div className="empty-state">
+            <span className="empty-icon">✉️</span>
+            <h3>{conversations.length === 0 ? '还没有私信' : '没有匹配结果'}</h3>
+            <p>{conversations.length === 0
+              ? '去推荐用户页面发起第一次私信吧！'
+              : '试试更换关键词，或清空搜索。'}</p>
+          </div>
+        ) : (
+          sorted.map((conv) => {
+            const name = conv.partner?.nickname || '未命名'
+            const isPinned = pinnedConversationIds.includes(conv.id)
+            return (
+              <div key={conv.id} className="dm-inbox-item-wrap">
+                <button
+                  className="dm-inbox-item"
+                  onClick={() => onOpenConversation(conv)}
+                  type="button"
+                >
+                  <div className="dm-inbox-avatar">{getAvatarLabel(name)}</div>
+                  <div className="dm-inbox-body">
+                    <div className="dm-inbox-row dm-inbox-row-top">
+                      <strong>{name}{isPinned ? ' 📌' : ''}</strong>
+                      <span className="dm-inbox-time">{formatTime(conv.last_message_at)}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                      <div className="dm-inbox-preview" style={{ flex: 1 }}>
+                        {conv.last_message || '点击进入会话'}
+                      </div>
+                      {conv.unread_count > 0 && (
+                        <span className="dm-inbox-unread">{conv.unread_count}</span>
+                      )}
+                    </div>
+                  </div>
+                </button>
+                {/* Swipe-style actions */}
+                <div className="dm-inbox-actions">
+                  <button
+                    className={`dm-pin-btn ${isPinned ? 'active' : ''}`}
+                    onClick={() => onTogglePinConversation(conv.id)}
+                    type="button"
+                  >
+                    {isPinned ? '📌 已置顶' : '置顶'}
+                  </button>
+                  <button
+                    className="btn btn-sm btn-ghost"
+                    onClick={() => onDelete(conv)}
+                    type="button"
+                    style={{ color: '#FF5A5F', fontSize: '12px' }}
+                  >
+                    删除
+                  </button>
+                </div>
+              </div>
+            )
+          })
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ── DmChat (full-screen, hides bottom nav) ──────────── */
+function DmChat({
+  conversation,
+  messages,
   input,
   setInput,
   sending,
@@ -40,150 +155,54 @@ function DmPanel({
   suggestion,
   suggesting,
   commonCommunities,
-  onDelete,
+  onBack,
+  onSend,
+  onSuggest,
 }) {
   const bottomRef = useRef(null)
-  const [searchKeyword, setSearchKeyword] = useState('')
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  const filteredConversations = useMemo(() => {
-    const keyword = searchKeyword.trim().toLowerCase()
-    if (!keyword) return conversations
-
-    return conversations.filter((conversation) => {
-      const partnerName = (conversation.partner?.nickname || '').toLowerCase()
-      const community = (conversation.source_community || '').toLowerCase()
-      const preview = (conversation.last_message || '').toLowerCase()
-      return partnerName.includes(keyword) || community.includes(keyword) || preview.includes(keyword)
-    })
-  }, [conversations, searchKeyword])
-
-  const sortedConversations = useMemo(() => {
-    const getLastTime = (conversation) => {
-      const value = Date.parse(conversation.last_message_at || '')
-      return Number.isNaN(value) ? 0 : value
-    }
-
-    return [...filteredConversations].sort((a, b) => {
-      const pinnedA = pinnedConversationIds.includes(a.id)
-      const pinnedB = pinnedConversationIds.includes(b.id)
-      if (pinnedA !== pinnedB) return pinnedA ? -1 : 1
-
-      const unreadA = a.unread_count || 0
-      const unreadB = b.unread_count || 0
-      if (unreadA !== unreadB) return unreadB - unreadA
-
-      return getLastTime(b) - getLastTime(a)
-    })
-  }, [filteredConversations, pinnedConversationIds])
-
-  const totalUnread = conversations.reduce((acc, conversation) => acc + (conversation.unread_count || 0), 0)
-
-  if (!currentConversation) {
-    return (
-      <div className="glass-card dm-inbox-shell">
-        <div className="dm-inbox-header">
-          <div>
-            <div className="dm-inbox-title">私信</div>
-            <div className="dm-inbox-subtitle">按时间排序展示最近会话，点击进入聊天。</div>
-          </div>
-        </div>
-
-        <div className="dm-inbox-toolbar">
-          <input
-            className="dm-inbox-search"
-            type="text"
-            value={searchKeyword}
-            placeholder="搜索联系人 / 消息"
-            onChange={(e) => setSearchKeyword(e.target.value)}
-          />
-          <div className="dm-inbox-stats">{sortedConversations.length} 个会话 · 未读 {totalUnread} · 置顶 {pinnedConversationIds.length}</div>
-        </div>
-
-        <div className="dm-inbox-list">
-          {sortedConversations.length === 0 ? (
-            <div className="empty-state" style={{ flex: 1 }}>
-              <div className="empty-icon">✉️</div>
-              <h3>{conversations.length === 0 ? '还没有私信' : '没有匹配结果'}</h3>
-              <p>{conversations.length === 0 ? '先去推荐用户列表里发起一次私信，会话会出现在这里。' : '试试更换关键词，或清空搜索。'}</p>
-            </div>
-          ) : (
-            sortedConversations.map((conversation) => {
-              const partnerName = conversation.partner?.nickname || '未命名'
-              const isPinned = pinnedConversationIds.includes(conversation.id)
-
-              return (
-                <div key={conversation.id} className="dm-inbox-item-wrap">
-                  <button className="dm-inbox-item" onClick={() => onOpenConversation(conversation)} type="button">
-                    <div className="dm-inbox-avatar">{getAvatarLabel(partnerName)}</div>
-                    <div className="dm-inbox-body">
-                      <div className="dm-inbox-row dm-inbox-row-top">
-                        <strong>{partnerName}</strong>
-                        <span className="dm-inbox-time">{formatTime(conversation.last_message_at)}</span>
-                      </div>
-                      {conversation.unread_count > 0 && (
-                        <div className="dm-inbox-row dm-inbox-row-middle">
-                          <span className="dm-inbox-unread">{conversation.unread_count}</span>
-                        </div>
-                      )}
-                      <div className="dm-inbox-preview">{conversation.last_message || '点击进入会话'}</div>
-                    </div>
-                  </button>
-                  <div className="dm-inbox-actions">
-                    <button
-                      className={`dm-pin-btn ${isPinned ? 'active' : ''}`}
-                      onClick={() => onTogglePinConversation(conversation.id)}
-                      type="button"
-                      title={isPinned ? '取消置顶' : '置顶会话'}
-                    >
-                      {isPinned ? '置顶中' : '置顶'}
-                    </button>
-                    <button className="btn btn-sm btn-ghost" onClick={() => onDelete(conversation)} type="button">
-                      删除
-                    </button>
-                  </div>
-                </div>
-              )
-            })
-          )}
-        </div>
-      </div>
-    )
-  }
+  const partnerName = conversation.partner?.nickname || '未知用户'
 
   return (
-    <div className="glass-card dm-chat-shell" style={{ display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+    <div className="dm-chat-shell">
+      {/* Header */}
       <div className="dm-chat-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: 0 }}>
-          <button className="btn btn-ghost btn-sm" onClick={onBackToList} type="button">← 返回</button>
-          <div className="dm-chat-avatar">{getAvatarLabel(currentConversation.partner?.nickname || '未知用户')}</div>
-          <div style={{ minWidth: 0 }}>
-            <div className="dm-chat-name">{currentConversation.partner?.nickname || '未知用户'}</div>
-          </div>
-        </div>
+        <button className="header-back-btn" onClick={onBack} type="button">
+          <BackIcon />
+          返回
+        </button>
+        <div className="dm-chat-avatar">{getAvatarLabel(partnerName)}</div>
+        <span className="dm-chat-name">{partnerName}</span>
       </div>
 
+      {/* Community tags */}
       {commonCommunities.length > 0 && (
-        <div style={{ marginTop: '10px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+        <div style={{ padding: '8px 16px', display: 'flex', gap: '6px', flexWrap: 'wrap', borderBottom: '1px solid var(--c-border)', background: 'var(--c-bg)' }}>
           {commonCommunities.map((name) => (
             <span key={name} className="interest-tag" style={{ fontSize: '11px' }}>{name}</span>
           ))}
         </div>
       )}
 
-      <div className="chat-messages dm-thread" style={{ flex: 1, overflowY: 'auto' }}>
+      {/* Messages */}
+      <div className="dm-thread">
         {messages.map((msg) => {
-          const isPartner = msg.sender_id === currentConversation.partner?.id
-
+          const isPartner = msg.sender_id === conversation.partner?.id
           return (
-            <div key={msg.id} className={`dm-message-row ${isPartner ? 'partner' : 'self'}`}>
-              {isPartner && <div className="dm-message-avatar">{getAvatarLabel(currentConversation.partner?.nickname || '未知用户')}</div>}
-              <div className={`chat-bubble ${isPartner ? 'assistant' : 'user'}`}>
+            <div key={msg.id} className={`dm-message-row ${isPartner ? '' : 'self'}`}>
+              {isPartner && (
+                <div className="dm-message-avatar">{getAvatarLabel(partnerName)}</div>
+              )}
+              <div
+                className={`chat-bubble ${isPartner ? 'assistant' : 'user'}`}
+                style={{ maxWidth: '76%' }}
+              >
                 {msg.content}
-                <div style={{ fontSize: '10px', opacity: 0.65, marginTop: '5px' }}>
+                <div style={{ fontSize: '10px', opacity: 0.6, marginTop: '4px' }}>
                   {formatTime(msg.created_at)}
                 </div>
               </div>
@@ -192,12 +211,15 @@ function DmPanel({
         })}
         <div ref={bottomRef} />
       </div>
-      <div className="chat-input-bar dm-chat-input-bar">
-        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-          {['🙂', '😂', '👍', '❤️'].map((emoji) => (
+
+      {/* Input area */}
+      <div className="dm-chat-input-bar">
+        {/* Emoji row */}
+        <div className="dm-emoji-row">
+          {['🙂', '😂', '👍', '❤️', '🔥', '👏'].map((emoji) => (
             <button
               key={emoji}
-              className="btn btn-sm btn-ghost"
+              className="dm-emoji-btn"
               onClick={() => setInput((prev) => `${prev}${emoji}`)}
               type="button"
             >
@@ -205,51 +227,84 @@ function DmPanel({
             </button>
           ))}
         </div>
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="输入私信内容..."
-          disabled={sending}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault()
-              onSend()
-            }
-          }}
-        />
-        <button className="btn btn-primary" onClick={onSend} disabled={sending || !input.trim()}>
-          发送
-        </button>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', flexWrap: 'wrap' }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--text-muted)' }}>
+
+        {/* Text + send */}
+        <div className="dm-input-row">
           <input
-            type="checkbox"
-            checked={agentReply}
-            onChange={(e) => setAgentReply(e.target.checked)}
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="输入私信内容..."
+            disabled={sending}
+            style={{
+              flex: 1,
+              padding: '12px 16px',
+              minHeight: '44px',
+              background: 'var(--c-interactive-bg)',
+              border: '1px solid var(--c-border)',
+              borderRadius: 'var(--radius-full)',
+              color: 'var(--c-text-primary)',
+              fontSize: '15px',
+              fontFamily: 'inherit',
+              outline: 'none',
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                onSend()
+              }
+            }}
           />
-          让对方 Agent 代聊
-        </label>
-        <button className="btn btn-sm btn-secondary" onClick={onSuggest} disabled={suggesting || !currentConversation}>
-          {suggesting ? '生成中...' : '给我一句建议'}
-        </button>
-        {suggestion && (
-          <button className="btn btn-sm btn-ghost" onClick={() => setInput(suggestion)}>
-            使用建议
+          <button
+            className="chat-send-btn"
+            onClick={onSend}
+            disabled={sending || !input.trim()}
+            aria-label="发送"
+          >
+            <SendIcon />
           </button>
+        </div>
+
+        {/* Agent assist row */}
+        <div className="dm-assist-row">
+          <label className="dm-assist-label">
+            <input
+              type="checkbox"
+              checked={agentReply}
+              onChange={(e) => setAgentReply(e.target.checked)}
+            />
+            让对方 Agent 代聊
+          </label>
+          <button
+            className="btn btn-sm btn-secondary"
+            style={{ borderRadius: 'var(--radius-full)' }}
+            onClick={onSuggest}
+            disabled={suggesting}
+          >
+            {suggesting ? '生成中...' : '💡 建议'}
+          </button>
+          {suggestion && (
+            <button
+              className="btn btn-sm btn-ghost"
+              onClick={() => setInput(suggestion)}
+            >
+              使用
+            </button>
+          )}
+        </div>
+
+        {suggestion && (
+          <div className="dm-suggestion-box">
+            建议：{suggestion}
+          </div>
         )}
       </div>
-      {suggestion && (
-        <div style={{ marginTop: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>
-          建议：{suggestion}
-        </div>
-      )}
     </div>
   )
 }
 
-export default function World() {
+/* ── World (main export) ─────────────────────────────── */
+export default function World({ onHideNav }) {
   const [tab, setTab] = useState('lobby')
 
   const [conversations, setConversations] = useState([])
@@ -263,6 +318,9 @@ export default function World() {
   const [suggesting, setSuggesting] = useState(false)
   const [pinnedConversationIds, setPinnedConversationIds] = useState([])
 
+  const unreadCount = conversations.reduce((acc, c) => acc + (c.unread_count || 0), 0)
+
+  // Load pinned from storage
   useEffect(() => {
     try {
       const saved = window.localStorage.getItem('dm_pinned_conversations')
@@ -271,23 +329,27 @@ export default function World() {
       if (Array.isArray(parsed)) {
         setPinnedConversationIds(parsed.filter((id) => typeof id === 'number'))
       }
-    } catch (error) {
-      console.error('load pinned conversations failed', error)
+    } catch (e) {
+      console.error('load pinned failed', e)
     }
   }, [])
 
   useEffect(() => {
     window.localStorage.setItem('dm_pinned_conversations', JSON.stringify(pinnedConversationIds))
   }, [pinnedConversationIds])
+
+  // Tell App whether to hide the bottom nav (when in DM chat)
+  useEffect(() => {
+    const inChat = currentConversation !== null
+    onHideNav?.(inChat)
+  }, [currentConversation, onHideNav])
+
   const refreshConversations = async (keepCurrent = true) => {
     const data = await listDmConversations()
     setConversations(data.conversations || [])
-
     if (keepCurrent && currentConversation) {
       const updated = (data.conversations || []).find((item) => item.id === currentConversation.id)
-      if (updated) {
-        setCurrentConversation(updated)
-      }
+      if (updated) setCurrentConversation(updated)
     }
   }
 
@@ -310,15 +372,11 @@ export default function World() {
   const handleStartDm = async (targetUserId, sourceCommunity) => {
     try {
       const data = await startDmConversation(targetUserId, sourceCommunity)
-      const newConversation = data.conversation
-      
-      // 先更新当前对话
-      setCurrentConversation(newConversation)
+      const newConv = data.conversation
+      setCurrentConversation(newConv)
       setTab('messages')
-      
-      // 然后刷新会话列表和消息
       const [msgData] = await Promise.all([
-        listDmMessages(newConversation.id),
+        listDmMessages(newConv.id),
         refreshConversations(),
       ])
       setMessages(msgData.messages || [])
@@ -329,34 +387,30 @@ export default function World() {
   }
 
   const openMessageInbox = () => {
-    setTab('messages')
     setCurrentConversation(null)
     setMessages([])
     setSuggestion('')
     setCommonCommunities([])
+    setTab('messages')
     refreshConversations(false).catch(console.error)
   }
 
   const handleSendDm = async () => {
     const content = dmInput.trim()
     if (!content || !currentConversation || dmSending) return
-
     setDmSending(true)
     setDmInput('')
     try {
-      // Return immediately after user's message is saved; render it right away
       await sendDmMessage(currentConversation.id, content, agentReply)
       const conv = currentConversation
       const msgData = await listDmMessages(conv.id)
       setMessages(msgData.messages || [])
       refreshConversations().catch(() => {})
-
-      // If agent reply is enabled, poll once after a delay to fetch the reply
       if (agentReply) {
         setTimeout(async () => {
           try {
-            const laterData = await listDmMessages(conv.id)
-            setMessages(laterData.messages || [])
+            const later = await listDmMessages(conv.id)
+            setMessages(later.messages || [])
             refreshConversations().catch(() => {})
           } catch (_) {}
         }, 3500)
@@ -380,10 +434,10 @@ export default function World() {
     }
   }
 
-  const handleDeleteConversation = async (conversation) => {
-    await deleteDmConversation(conversation.id)
-    setPinnedConversationIds((prev) => prev.filter((id) => id !== conversation.id))
-    if (currentConversation?.id === conversation.id) {
+  const handleDeleteConversation = async (conv) => {
+    await deleteDmConversation(conv.id)
+    setPinnedConversationIds((prev) => prev.filter((id) => id !== conv.id))
+    if (currentConversation?.id === conv.id) {
       setCurrentConversation(null)
       setMessages([])
       setCommonCommunities([])
@@ -391,45 +445,25 @@ export default function World() {
     await refreshConversations()
   }
 
-  const handleTogglePinConversation = (conversationId) => {
-    setPinnedConversationIds((prev) => {
-      if (prev.includes(conversationId)) {
-        return prev.filter((id) => id !== conversationId)
-      }
-      return [conversationId, ...prev]
-    })
+  const handleTogglePinConversation = (convId) => {
+    setPinnedConversationIds((prev) =>
+      prev.includes(convId) ? prev.filter((id) => id !== convId) : [convId, ...prev]
+    )
   }
 
   useEffect(() => {
     listDmConversations()
-      .then((convData) => setConversations(convData.conversations || []))
+      .then((data) => setConversations(data.conversations || []))
       .catch(console.error)
   }, [])
 
-  const unreadCount = conversations.reduce((acc, c) => acc + (c.unread_count || 0), 0)
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '4px' }}>
-        <button className={`btn ${tab === 'lobby' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setTab('lobby')}>推荐用户</button>
-        <button className={`btn ${tab === 'messages' ? 'btn-primary' : 'btn-secondary'}`} onClick={openMessageInbox}>
-          私信入口
-          {unreadCount > 0 && <span className="card-badge">{unreadCount}</span>}
-        </button>
-      </div>
-
-      {tab === 'lobby' && <Social onStartDm={handleStartDm} onOpenMessages={openMessageInbox} />}
-      {tab === 'messages' && (
-        <DmPanel
-          conversations={conversations}
-          pinnedConversationIds={pinnedConversationIds}
-          currentConversation={currentConversation}
+  // If in a DM chat, show full-screen DM (nav is hidden by useEffect above)
+  if (currentConversation) {
+    return (
+      <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <DmChat
+          conversation={currentConversation}
           messages={messages}
-          onOpenConversation={openConversation}
-          onTogglePinConversation={handleTogglePinConversation}
-          onBackToList={openMessageInbox}
-          onSuggest={handleSuggest}
           input={dmInput}
           setInput={setDmInput}
           sending={dmSending}
@@ -437,8 +471,48 @@ export default function World() {
           setAgentReply={setAgentReply}
           suggestion={suggestion}
           suggesting={suggesting}
-          onSend={handleSendDm}
           commonCommunities={commonCommunities}
+          onBack={openMessageInbox}
+          onSend={handleSendDm}
+          onSuggest={handleSuggest}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
+      {/* Tab switcher */}
+      <div style={{
+        padding: '12px 16px',
+        background: 'var(--c-bg)',
+        borderBottom: '1px solid var(--c-border)',
+        position: 'sticky',
+        top: 0,
+        zIndex: 5,
+      }}>
+        <div className="seg-control">
+          <button className={`seg-btn ${tab === 'lobby' ? 'active' : ''}`} onClick={() => setTab('lobby')}>
+            推荐用户
+          </button>
+          <button
+            className={`seg-btn ${tab === 'messages' ? 'active' : ''}`}
+            onClick={openMessageInbox}
+          >
+            私信
+            {unreadCount > 0 && <span className="card-badge">{unreadCount}</span>}
+          </button>
+        </div>
+      </div>
+
+      {tab === 'lobby' && <Social onStartDm={handleStartDm} onOpenMessages={openMessageInbox} />}
+
+      {tab === 'messages' && (
+        <DmInbox
+          conversations={conversations}
+          pinnedConversationIds={pinnedConversationIds}
+          onOpenConversation={openConversation}
+          onTogglePinConversation={handleTogglePinConversation}
           onDelete={handleDeleteConversation}
         />
       )}
