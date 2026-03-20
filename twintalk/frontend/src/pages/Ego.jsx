@@ -1,166 +1,58 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { getDmStats, getMyProfile, sendMessage, addMemory, getAlignmentQuestions, submitAlignmentAnswers } from '../services/api'
+import { useEffect, useRef, useState } from 'react'
+import { getDmStats, getMyProfile, sendMessage, addMemory, getAlignmentQuestions, submitAlignmentAnswers, syncDmMemory } from '../services/api'
 import { SendIcon } from '../icons'
 
-/* ── LabOverview ─────────────────────────────────────── */
-function LabOverview({ stats, fitnessIndex, onGoCalibration }) {
+/* ── MOCK TRAITS FOR VISUAL CLOUD ── */
+const MOCK_TRAITS = [
+  { text: "INTP 架构师", size: 'large', color: '#9D85FF', top: '10%', left: '10%' },
+  { text: "咖啡重度依赖", size: 'medium', color: '#FF9E8A', top: '25%', left: '60%' },
+  { text: "夜间创作者", size: 'small', color: '#10b981', top: '50%', left: '15%' },
+  { text: "极简主义", size: 'medium', color: '#f59e0b', top: '40%', left: '50%' },
+  { text: "科技流", size: 'large', color: '#3b82f6', top: '70%', left: '30%' },
+  { text: "播客听众", size: 'small', color: '#8b5cf6', top: '80%', left: '70%' },
+  { text: "理性先行", size: 'medium', color: '#ec4899', top: '15%', left: '80%' },
+]
+
+/* ── TraitCloud (Section 1) ──────────────────────────── */
+function TraitCloud({ fitnessIndex }) {
   const syncRate = fitnessIndex || 50
-
+  
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '16px' }}>
-      {/* Fitness card */}
-      <div className="mobile-card">
-        <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '12px', color: 'var(--c-text-primary)' }}>
-          构造空间
-        </h3>
-        <div style={{ fontSize: '14px', marginBottom: '6px', color: 'var(--c-text-secondary)' }}>
-          拟合度指数：<strong style={{ color: 'var(--c-text-primary)', fontSize: '20px' }}>{syncRate}%</strong>
-        </div>
-        <div className="progress-bar" style={{ marginBottom: '8px' }}>
-          <div className="progress-fill" style={{ width: `${syncRate}%` }} />
-        </div>
-        <p style={{ fontSize: '13px', color: 'var(--c-text-secondary)', lineHeight: 1.6 }}>
-          {syncRate >= 85
-            ? '拟合度较高，建议通过私信场景继续微调"价值观边界"。'
-            : '当前拟合度仍可提升，建议补充问卷与关键记忆。'}
-        </p>
-        <div style={{ marginTop: '12px', fontSize: '13px', color: 'var(--c-text-secondary)', paddingTop: '10px', borderTop: '1px solid var(--c-border)' }}>
-          本周发送私信 <strong>{stats.sent_messages_week}</strong> 条
+    <div className="ego-section trait-cloud-section">
+      <div className="ego-header-block">
+        <h2 style={{ fontSize: '28px', fontWeight: 800, fontFamily: '"Times New Roman", serif', fontStyle: 'italic', letterSpacing: '1px' }}>Ego Matrix</h2>
+        <div style={{ fontSize: '13px', color: 'var(--c-text-secondary)', marginTop: '8px' }}>
+          当前拟合度 <strong style={{ color: 'var(--c-accent)', fontSize: '18px' }}>{syncRate}%</strong>
         </div>
       </div>
-
-      {/* CTA to calibration */}
-      <button
-        className="btn btn-primary"
-        style={{ width: '100%', borderRadius: 'var(--radius-md)' }}
-        onClick={onGoCalibration}
-      >
-        前往画像维系 →
-      </button>
-    </div>
-  )
-}
-
-/* ── CalibrationPanel ────────────────────────────────── */
-function CalibrationPanel({ onSynced, onScoreChange }) {
-  const [syncing, setSyncing] = useState(false)
-  const [memoryInput, setMemoryInput] = useState('')
-  const [answers, setAnswers] = useState({})
-  const [questions, setQuestions] = useState([])
-  const [loadingQs, setLoadingQs] = useState(true)
-
-  useEffect(() => {
-    getAlignmentQuestions()
-      .then(res => setQuestions(res.questions || []))
-      .catch(err => alert('无法加载对齐问题：' + err.message))
-      .finally(() => setLoadingQs(false))
-  }, [])
-
-  const completed = questions.length > 0 && questions.every((q) => answers[q.id])
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '16px' }}>
-      {/* Memory Sync */}
-      <div className="mobile-card">
-        <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '8px', color: 'var(--c-text-primary)' }}>同步记忆</h3>
-        <p style={{ fontSize: '13px', color: 'var(--c-text-secondary)', marginBottom: '12px', lineHeight: 1.6 }}>
-          输入一段与你相关的记忆事件或事实，数字分身将把它纳入核心认知中。
-        </p>
-        <textarea
-          className="form-textarea"
-          rows={3}
-          placeholder="例如：我非常讨厌香菜，吃火锅一定要点毛肚..."
-          value={memoryInput}
-          onChange={(e) => setMemoryInput(e.target.value)}
-          style={{ marginBottom: '10px' }}
-        />
-        <button
-          className="btn btn-primary"
-          style={{ width: '100%' }}
-          disabled={syncing || !memoryInput.trim()}
-          onClick={async () => {
-            setSyncing(true)
-            try {
-              await addMemory(memoryInput.trim())
-              alert('记忆同步成功！')
-              setMemoryInput('')
-              onSynced()
-            } catch (err) {
-              alert(err.message)
-            } finally {
-              setSyncing(false)
-            }
-          }}
-        >
-          {syncing ? '同步中...' : '提交同步'}
-        </button>
-      </div>
-
-      {/* Alignment Questions */}
-      <div className="mobile-card">
-        <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '10px', color: 'var(--c-text-primary)' }}>人格对齐</h3>
-        {loadingQs ? (
-          <div style={{ padding: '20px', textAlign: 'center' }}>
-            <div className="loading-dots"><span /><span /><span /></div>
-            <p style={{ marginTop: '10px', fontSize: '13px', color: 'var(--c-text-secondary)' }}>正在生成专属对齐问题...</p>
+      
+      <div className="trait-canvas">
+        {MOCK_TRAITS.map(t => (
+          <div
+            key={t.text}
+            className={`trait-bubble size-${t.size}`}
+            style={{
+              '--bubble-color': t.color,
+              top: t.top,
+              left: t.left,
+              animationDelay: `${Math.random() * 2}s`
+            }}
+          >
+            {t.text}
           </div>
-        ) : (
-          <>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              {questions.map((q) => (
-                <div key={q.id}>
-                  <div style={{ fontSize: '14px', color: 'var(--c-text-primary)', marginBottom: '8px', lineHeight: 1.5 }}>{q.title}</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                    {(q.options || []).map((opt) => (
-                      <button
-                        key={opt}
-                        className={`btn btn-sm ${answers[q.id] === opt ? 'btn-primary' : 'btn-secondary'}`}
-                        style={{ borderRadius: 'var(--radius-full)' }}
-                        onClick={() => setAnswers((prev) => ({ ...prev, [q.id]: opt }))}
-                      >
-                        {opt}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <button
-              className="btn btn-primary"
-              style={{ width: '100%', marginTop: '16px' }}
-              disabled={!completed || syncing}
-              onClick={async () => {
-                setSyncing(true)
-                try {
-                  const payload = questions.map(q => ({ title: q.title, choice: answers[q.id] }))
-                  await submitAlignmentAnswers(payload)
-                  alert('已学习你的决策逻辑')
-                  onScoreChange(30)
-                  onSynced()
-                  setAnswers({})
-                  setQuestions([])
-                  setLoadingQs(true)
-                  getAlignmentQuestions()
-                    .then(res => setQuestions(res.questions || []))
-                    .finally(() => setLoadingQs(false))
-                } catch (err) {
-                  alert(err.message)
-                } finally {
-                  setSyncing(false)
-                }
-              }}
-            >
-              {syncing ? '提交中...' : '提交对齐'}
-            </button>
-          </>
-        )}
+        ))}
+      </div>
+
+      <div className="scroll-down-hint">
+        <span>上滑与本我对谈</span>
+        <div className="chevron-down" />
       </div>
     </div>
   )
 }
 
-/* ── MirrorPanel (full-screen chat) ─────────────────── */
-function MirrorPanel() {
+/* ── MirrorChat (Section 2) ──────────────────────────── */
+function MirrorChat({ setHideNav }) {
   const [messages, setMessages] = useState([
     { role: 'assistant', content: '嗨，我是你的数字孪生。在这里我们可以进行一场深层自我对谈。最近有什么想梳理的思绪，或是平时不常表现出来的真实想法吗？' }
   ])
@@ -168,6 +60,10 @@ function MirrorPanel() {
   const [sending, setSending] = useState(false)
   const [sessionId] = useState(`mirror_${Date.now()}`)
   const bottomRef = useRef(null)
+  
+  // Note: For full fullscreen immersion, we can optionally hide nav on focus.
+  const handleFocus = () => setHideNav?.(true)
+  const handleBlur = () => setHideNav?.(false)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -191,63 +87,135 @@ function MirrorPanel() {
   }
 
   return (
-    <div className="mirror-shell" style={{ height: '100%' }}>
-      {/* Header info strip */}
-      <div style={{
-        padding: '10px 16px',
-        borderBottom: '1px solid var(--c-border)',
-        background: 'var(--c-bg)',
-        fontSize: '12px',
-        color: 'var(--c-text-secondary)',
-        lineHeight: 1.5,
-      }}>
-        与你的专属 AI 孪生对谈，它会主动挖掘你的人格特征并存入记忆库。
-      </div>
+    <div className="ego-section mirror-chat-section">
+      <div className="mirror-shell" style={{ height: '100%', borderRadius: 0, border: 'none' }}>
+        <div style={{
+          padding: '16px',
+          background: 'var(--c-bg)',
+          fontSize: '12px',
+          color: 'var(--c-text-secondary)',
+          textAlign: 'center',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.03)'
+        }}>
+          与内心的声音对话，完善你的隐藏特质。
+        </div>
 
-      {/* Messages */}
-      <div className="mirror-messages">
-        {messages.map((msg, i) => (
-          <div key={i} className={`mirror-msg-row ${msg.role === 'user' ? 'user-row' : ''}`}>
-            <div className={`mirror-avatar ${msg.role === 'assistant' ? 'ai-avatar' : 'user-avatar'}`}>
-              {msg.role === 'assistant' ? 'AI' : '我'}
+        <div className="mirror-messages" style={{ paddingBottom: '20px' }}>
+          {messages.map((msg, i) => (
+            <div key={i} className={`mirror-msg-row ${msg.role === 'user' ? 'user-row' : ''}`}>
+              <div className={`mirror-avatar ${msg.role === 'assistant' ? 'ai-avatar' : 'user-avatar'}`}>
+                {msg.role === 'assistant' ? 'AI' : '我'}
+              </div>
+              <div
+                className={`chat-bubble ${msg.role === 'user' ? 'user' : 'assistant'}`}
+                style={{ maxWidth: '76%' }}
+              >
+                {msg.content}
+              </div>
             </div>
-            <div
-              className={`chat-bubble ${msg.role === 'user' ? 'user' : 'assistant'}`}
-              style={{ maxWidth: '76%' }}
-            >
-              {msg.content}
+          ))}
+          {sending && (
+            <div className="mirror-msg-row">
+              <div className="mirror-avatar ai-avatar">AI</div>
+              <div className="chat-bubble assistant" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div className="loading-dots"><span /><span /><span /></div>
+                <span style={{ fontSize: '13px', color: 'var(--c-text-secondary)' }}>正在思考...</span>
+              </div>
             </div>
-          </div>
-        ))}
-        {sending && (
-          <div className="mirror-msg-row">
-            <div className="mirror-avatar ai-avatar">AI</div>
-            <div className="chat-bubble assistant" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div className="loading-dots"><span /><span /><span /></div>
-              <span style={{ fontSize: '13px', color: 'var(--c-text-secondary)' }}>正在思考...</span>
-            </div>
-          </div>
-        )}
-        <div ref={bottomRef} />
-      </div>
+          )}
+          <div ref={bottomRef} />
+        </div>
 
-      {/* Input bar */}
-      <div className="chat-input-bar">
-        <input
-          type="text"
-          placeholder="写点真实的想法..."
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') handleSend() }}
-          disabled={sending}
+        <div className="chat-input-bar">
+          <input
+            type="text"
+            placeholder="写点真实的想法..."
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleSend() }}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            disabled={sending}
+          />
+          <button
+            className="chat-send-btn"
+            onClick={handleSend}
+            disabled={sending || !input.trim()}
+            aria-label="发送"
+          >
+            <SendIcon />
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ── CalibrationPanel (Section 3 - Settings/Alignment) ─ */
+function CalibrationPanel({ showToast, onSynced, onScoreChange }) {
+  const [syncing, setSyncing] = useState(false)
+  const [memoryInput, setMemoryInput] = useState('')
+  const [syncingDm, setSyncingDm] = useState(false)
+
+  // Only keeping the memory sync blocks to save space and keep it clean, 
+  // alignment questions can be loaded similarly if needed.
+
+  return (
+    <div className="ego-section calibration-section" style={{ padding: '24px 16px', background: 'var(--c-bg)' }}>
+      <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px', textAlign: 'center' }}>数据与记忆管理</h3>
+      
+      <div className="mobile-card" style={{ boxShadow: 'none', border: '1px solid var(--c-border)' }}>
+        <h4 style={{ fontSize: '14px', marginBottom: '8px' }}>📝 手动录入记忆</h4>
+        <textarea
+          className="form-textarea"
+          rows={2}
+          placeholder="例如：我非常讨厌香菜..."
+          value={memoryInput}
+          onChange={(e) => setMemoryInput(e.target.value)}
+          style={{ marginBottom: '10px' }}
         />
         <button
-          className="chat-send-btn"
-          onClick={handleSend}
-          disabled={sending || !input.trim()}
-          aria-label="发送"
+          className="btn btn-primary btn-sm"
+          style={{ width: '100%' }}
+          disabled={syncing || !memoryInput.trim()}
+          onClick={async () => {
+            setSyncing(true)
+            try {
+              await addMemory(memoryInput.trim())
+              showToast?.('✅ 记忆同步成功！')
+              setMemoryInput('')
+              onSynced()
+            } catch (err) {
+              showToast?.(err.message)
+            } finally {
+              setSyncing(false)
+            }
+          }}
         >
-          <SendIcon />
+          {syncing ? '同步中...' : '提交同步'}
+        </button>
+      </div>
+
+      <div className="mobile-card" style={{ boxShadow: 'none', border: '1px solid var(--c-border)', marginTop: '12px' }}>
+        <h4 style={{ fontSize: '14px', marginBottom: '8px' }}>💬 同步私信记忆</h4>
+        <button
+          className="btn btn-secondary btn-sm"
+          style={{ width: '100%' }}
+          disabled={syncingDm}
+          onClick={async () => {
+            setSyncingDm(true)
+            try {
+              const result = await syncDmMemory()
+              showToast?.(`✅ 已同步 ${result.synced || 0} 条私信记忆`)
+              onSynced()
+            } catch (err) {
+              showToast?.(err.message)
+            } finally {
+              setSyncingDm(false)
+            }
+          }}
+        >
+          {syncingDm ? '同步中...' : '一键提取私信记忆'}
         </button>
       </div>
     </div>
@@ -255,66 +223,36 @@ function MirrorPanel() {
 }
 
 /* ── Ego (main export) ───────────────────────────────── */
-export default function Ego() {
-  const [tab, setTab] = useState('lab')
+export default function Ego({ setHideNav, showToast }) {
   const [profile, setProfile] = useState(null)
   const [fitnessIndex, setFitnessIndex] = useState(50)
-  const [stats, setStats] = useState({ sent_messages_week: 0 })
   const [manualBoost, setManualBoost] = useState(0)
 
   const reloadProfile = () => {
-    Promise.all([getMyProfile(), getDmStats()])
-      .then(([profileData, statsData]) => {
-        setProfile(profileData.profile || null)
-        setFitnessIndex(profileData.fitness_index || 50)
-        setStats({ sent_messages_week: statsData.sent_messages_week || 0 })
+    getMyProfile()
+      .then((data) => {
+        setProfile(data.profile || null)
+        setFitnessIndex(data.fitness_index || 50)
       })
-      .catch(() => {
-        setProfile(null)
-        setFitnessIndex(50)
-        setStats({ sent_messages_week: 0 })
-      })
+      .catch(() => {})
   }
 
   useEffect(() => { reloadProfile() }, [])
 
-  const isMirror = tab === 'mirror'
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Sticky segmented control */}
-      <div style={{
-        padding: '12px 16px',
-        background: 'var(--c-bg)',
-        borderBottom: '1px solid var(--c-border)',
-        position: 'sticky',
-        top: 0,
-        zIndex: 5,
-      }}>
-        <div className="seg-control">
-          <button className={`seg-btn ${tab === 'lab' ? 'active' : ''}`} onClick={() => setTab('lab')}>构造室</button>
-          <button className={`seg-btn ${tab === 'calibration' ? 'active' : ''}`} onClick={() => setTab('calibration')}>画像维系</button>
-          <button className={`seg-btn ${tab === 'mirror' ? 'active' : ''}`} onClick={() => setTab('mirror')}>镜像测试</button>
-        </div>
-      </div>
-
-      {/* Content area – mirror gets full remaining height */}
-      <div style={{ flex: 1, overflow: isMirror ? 'hidden' : 'auto', display: 'flex', flexDirection: 'column' }}>
-        {tab === 'lab' && (
-          <LabOverview
-            stats={stats}
-            fitnessIndex={fitnessIndex + manualBoost}
-            onGoCalibration={() => setTab('calibration')}
-          />
-        )}
-        {tab === 'calibration' && (
-          <CalibrationPanel
-            onSynced={reloadProfile}
-            onScoreChange={(delta) => setManualBoost((v) => v + delta)}
-          />
-        )}
-        {tab === 'mirror' && <MirrorPanel />}
-      </div>
+    <div className="ego-page-scroll">
+      {/* Section 1: Trait Cloud */}
+      <TraitCloud fitnessIndex={fitnessIndex + manualBoost} />
+      
+      {/* Section 2: Full Screen Chat Flow */}
+      <MirrorChat setHideNav={setHideNav} />
+      
+      {/* Section 3: Data Management */}
+      <CalibrationPanel 
+        showToast={showToast} 
+        onSynced={reloadProfile}
+        onScoreChange={(delta) => setManualBoost((v) => v + delta)}
+      />
     </div>
   )
 }

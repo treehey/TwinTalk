@@ -24,6 +24,11 @@ class Config:
     OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
     OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
     
+    if not OPENAI_API_KEY:
+        import logging
+        logging.warning("=== OPENAI_API_KEY is not set in environment or .env file! ===")
+        logging.warning("AI features (Agent reply, alignment questions) will use mock data or may return empty.")
+    
     # App
     DEBUG = os.getenv("FLASK_DEBUG", "true").lower() == "true"
     HOST = os.getenv("HOST", "0.0.0.0")

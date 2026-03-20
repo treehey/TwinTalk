@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { findMatches, followUser, unfollowUser } from '../services/api'
+import { findMatches, followUser, unfollowUser, getFollowing } from '../services/api'
 
 /* ── MatchCard – post-style layout ─────────────────── */
 function MatchCard({ match, onStartDm, isFollowing, onFollowChange }) {
@@ -92,6 +92,13 @@ export default function Social({ onStartDm }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [refreshToken, setRefreshToken] = useState('init')
+
+  // Load following IDs from backend on mount
+  useEffect(() => {
+    getFollowing()
+      .then((data) => setFollowingSet(new Set(data.following_ids || [])))
+      .catch(() => {})
+  }, [])
 
   const loadMatches = async (token = refreshToken) => {
     try {

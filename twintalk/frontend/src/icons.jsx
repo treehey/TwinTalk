@@ -96,3 +96,45 @@ export const TrashIcon = () => (
     <path d="M9 6V4h6v2" />
   </svg>
 )
+
+export const MirrorIcon = ({ active }) => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.5} strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 3v18" />
+    <path d="M8 7c2 1 2 3 0 5s-2 4 0 5" />
+    <path d="M16 7c-2 1-2 3 0 5s2 4 0 5" />
+  </svg>
+)
+
+export const CompassIcon = ({ active }) => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={active ? 2.2 : 1.5} strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10" />
+    <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" fill={active ? 'white' : 'none'} />
+  </svg>
+)
+
+export const HeartIcon = ({ active }) => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={active ? 2.2 : 1.5} strokeLinecap="round" strokeLinejoin="round">
+    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+  </svg>
+)
+
+export const MagicActionIcon = () => (
+  <div className="nav-action-btn">
+    <img 
+      src="/logo.png" 
+      alt="TwinTalk Logo" 
+      style={{ 
+        width: '100%', 
+        height: '100%', 
+        objectFit: 'contain', 
+        borderRadius: '50%' 
+      }} 
+      onError={(e) => {
+        // Fallback styling if image is missing
+        e.target.style.display = 'none';
+        e.target.parentElement.innerHTML = '<span style="color:#F4C414; font-weight:800; font-size:24px;">TT</span>';
+      }}
+    />
+  </div>
+)
