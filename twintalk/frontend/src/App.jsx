@@ -1,106 +1,198 @@
-import { useState, useEffect } from 'react'
-import { isLoggedIn, logout, getMe } from './services/api'
+import { useState, useEffect, useCallback } from 'react'
+import { getMe, isLoggedIn, logout, listDmConversations } from './services/api'
 import Onboarding from './pages/Onboarding'
+import Social from './pages/Social'
 import World from './pages/World'
 import Ego from './pages/Ego'
-import { HomeIcon, UserIcon } from './icons'
-import './index.css'
+import { HomeIcon, MessageIcon, UserIcon, LogoutIcon, MagicActionIcon } from './icons'
 
-const NAV_ITEMS = [
-  { key: 'world', label: '世界', Icon: HomeIcon },
-  { key: 'ego',   label: '本我', Icon: UserIcon  },
-]
+/* ── Toast Component ── */
+function Toast({ message, onClose }) {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 2800)
+    return () => clearTimeout(timer)
+  }, [onClose])
 
-const PAGE_TITLES = {
-  world: 'TwinTalk · 世界',
-  ego:   'TwinTalk · 本我',
+  return (
+    <div className="toast-notification">
+      <span>{message}</span>
+    </div>
+  )
 }
 
+/* ── App ── */
 export default function App() {
   const [user, setUser] = useState(null)
-  const [page, setPage] = useState('world')
   const [loading, setLoading] = useState(true)
-  // hiddenNav is set to true by child pages (e.g. DM chat) that need full-screen
-  const [hiddenNav, setHiddenNav] = useState(false)
 
-  useEffect(() => {
-    if (isLoggedIn()) {
-      getMe()
-        .then((data) => setUser(data.user))
-        .catch(() => logout())
-        .finally(() => setLoading(false))
-    } else {
-      setLoading(false)
-    }
+  // 3-Tab state: 'social', 'ego'
+  const [page, setPage] = useState('social')
+  const [hideNav, setHideNav] = useState(false)
+  const [totalUnread, setTotalUnread] = useState(0)
+  const [toasts, setToasts] = useState([])
+
+  // Drawer / Bottom sheet state
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [agentMenuOpen, setAgentMenuOpen] = useState(false)
+
+  // ── Global toast helper ──
+  const showToast = useCallback((msg) => {
+    const id = Date.now()
+    setToasts((prev) => [...prev, { id, message: msg }])
   }, [])
 
-  const handleLogin = (userData) => {
-    setUser(userData)
-    setPage('world')
+  const removeToast = useCallback((id) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id))
+  }, [])
+
+  // ── Auth bootstrapping ──
+  useEffect(() => {
+    if (!isLoggedIn()) { setLoading(false); return }
+    getMe()
+      .then((data) => setUser(data.user))
+      .catch(() => { logout(); setUser(null) })
+      .finally(() => setLoading(false))
+  }, [])
+
+  // ── Unread count polling ──
+  useEffect(() => {
+    if (!user) return
+    const fetchUnread = () => {
+      listDmConversations()
+        .then((data) => {
+          const sum = (data.conversations || []).reduce((a, c) => a + (c.unread_count || 0), 0)
+          setTotalUnread(sum)
+        })
+        .catch(() => {})
+    }
+    fetchUnread()
+    const interval = setInterval(fetchUnread, 15000)
+    return () => clearInterval(interval)
+  }, [user])
+
+  const [pendingDmTargetId, setPendingDmTargetId] = useState(null)
+
+  // ── Handler for "start DM from Social card" ──
+  const handleStartDm = (targetUserId) => {
+    setDrawerOpen(true)
+    setPendingDmTargetId(targetUserId)
   }
 
   if (loading) {
     return (
-      <div className="onboarding-container">
-        <div className="loading-dots"><span /><span /><span /></div>
+      <div className="mobile-app">
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100dvh' }}>
+          <div className="loading-dots"><span /><span /><span /></div>
+        </div>
       </div>
     )
   }
 
-  if (!user || !user.onboarding_completed) {
-    return <Onboarding onLogin={handleLogin} />
-  }
-
-  const handleLogout = () => {
-    logout()
-    setUser(null)
+  if (!user) {
+    return <Onboarding onLogin={(u) => { setUser(u); setPage('social') }} />
   }
 
   return (
     <div className="mobile-app">
-      {/* ── Fixed Header ── */}
-      {!hiddenNav && (
-        <header className="mobile-header">
-          <button className="icon-btn" onClick={handleLogout} aria-label="退出登录" title="退出">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-              <polyline points="16 17 21 12 16 7" />
-              <line x1="21" y1="12" x2="9" y2="12" />
-            </svg>
+      {/* ── Top Header ── */}
+      {!hideNav && (
+        <header className="mobile-header" style={{ justifyContent: 'space-between' }}>
+          {/* Left: Inbox Drawer Toggle */}
+          <button className="header-icon-btn" onClick={() => setDrawerOpen(true)} aria-label="消息">
+            <MessageIcon />
+            {totalUnread > 0 && (
+              <span className="header-badge">{totalUnread > 99 ? '99+' : totalUnread}</span>
+            )}
           </button>
-          <span className="mobile-header-title">Social</span>
-          <button className="icon-btn" aria-label="Compose new post">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
+
+          {/* Center: TwinTalk Artistic Logo */}
+          <div className="twintalk-logo" style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
+            TwinTalk
+          </div>
+
+          {/* Right: Logout */}
+          <button
+            className="header-icon-btn"
+            onClick={() => { logout(); setUser(null) }}
+            aria-label="退出"
+          >
+            <LogoutIcon />
           </button>
         </header>
       )}
 
-      {/* ── Scrollable Content ── */}
+      {/* ── Main Content Area ── */}
       <main className="mobile-main">
-        {page === 'world'
-          ? <World onHideNav={setHiddenNav} />
-          : <Ego />}
+        <div className={`page-container ${page === 'social' ? 'page-active' : 'page-hidden'}`}>
+          <Social onStartDm={handleStartDm} />
+        </div>
+        <div className={`page-container ${page === 'ego' ? 'page-active' : 'page-hidden'}`}>
+          <Ego
+            setHideNav={setHideNav}
+            showToast={showToast}
+          />
+        </div>
       </main>
 
-      {/* ── Bottom Navigation ── */}
-      {!hiddenNav && (
+      {/* ── Left Drawer (Inbox) ── */}
+      <div className={`overlay-backdrop ${drawerOpen ? 'open' : ''}`} onClick={() => setDrawerOpen(false)} />
+      <div className={`left-drawer ${drawerOpen ? 'open' : ''}`}>
+        {/* World.jsx is now acting purely as the inbox content inside the drawer */}
+        <World
+          setHideNav={setHideNav}
+          showToast={showToast}
+          onUnreadChange={setTotalUnread}
+          pendingDmTargetId={pendingDmTargetId}
+          onDmStarted={() => setPendingDmTargetId(null)}
+        />
+      </div>
+
+      {/* ── Radial Agent Menu Overlay ── */}
+      <div className={`overlay-backdrop ${agentMenuOpen ? 'open' : ''}`} onClick={() => setAgentMenuOpen(false)} style={{ zIndex: 100 }} />
+      
+      <div className={`radial-menu-wrapper ${agentMenuOpen ? 'open' : ''}`}>
+        <button className="radial-item advisor" onClick={() => { showToast('Advisor (情感顾问) 功能即将上线'); setAgentMenuOpen(false); }}>
+          <div className="icon" style={{ color: '#10b981' }}>A</div>
+          <span>Advisor</span>
+        </button>
+        <button className="radial-item planner" onClick={() => { showToast('Planner (规划师) 功能即将上线'); setAgentMenuOpen(false); }}>
+          <div className="icon" style={{ color: '#f59e0b' }}>P</div>
+          <span>Planner</span>
+        </button>
+      </div>
+
+      {/* ── Bottom Navigation Bar (3 Tabs) ── */}
+      {!hideNav && (
         <nav className="mobile-bottom-nav">
-          {NAV_ITEMS.map(({ key, label, Icon }) => (
-            <button
-              key={key}
-              className={`mobile-nav-item ${page === key ? 'active' : ''}`}
-              onClick={() => setPage(key)}
-              aria-label={label}
-            >
-              <Icon active={page === key} />
-              <span className="mobile-nav-label">{label}</span>
-            </button>
-          ))}
+          <button
+            className={`nav-tab ${page === 'social' ? 'active' : ''}`}
+            onClick={() => setPage('social')}
+          >
+            <span className="nav-tab-icon"><HomeIcon active={page === 'social'} /></span>
+          </button>
+          
+          <button
+            className={`nav-tab nav-tab-action ${agentMenuOpen ? 'active-menu' : ''}`}
+            onClick={() => setAgentMenuOpen(!agentMenuOpen)}
+          >
+            <span className="nav-tab-icon"><MagicActionIcon /></span>
+          </button>
+          
+          <button
+            className={`nav-tab ${page === 'ego' ? 'active' : ''}`}
+            onClick={() => setPage('ego')}
+          >
+            <span className="nav-tab-icon"><UserIcon active={page === 'ego'} /></span>
+          </button>
         </nav>
       )}
+
+      {/* ── Toast Container ── */}
+      <div className="toast-container">
+        {toasts.map((t) => (
+          <Toast key={t.id} message={t.message} onClose={() => removeToast(t.id)} />
+        ))}
+      </div>
     </div>
   )
 }

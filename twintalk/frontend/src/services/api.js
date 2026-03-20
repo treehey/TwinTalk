@@ -174,6 +174,14 @@ export async function findMatches(limit = 10, refreshToken = '') {
   return request(`/social/match?limit=${limit}&refresh_token=${token}`);
 }
 
+export async function getFollowing() {
+  return request('/social/following');
+}
+
+export async function getMyProfileMemories() {
+  return request('/profiles/me');
+}
+
 // ---- Direct Messages ----
 export async function listDmConversations() {
   return request('/social/dm/conversations')

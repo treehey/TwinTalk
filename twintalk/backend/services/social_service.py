@@ -49,6 +49,15 @@ class SocialService:
         ).delete()
         self.db.commit()
 
+    def get_following_ids(self, user_id: str) -> list:
+        """Return list of user IDs that user_id is following."""
+        rows = (
+            self.db.query(TwinConnection.following_id)
+            .filter_by(follower_id=user_id, status="accepted")
+            .all()
+        )
+        return [r[0] for r in rows]
+
     def find_matches(self, user_id: str, limit: int = 10, refresh_token: str = "") -> list:
         """Find twins using multi-dimension profile similarity."""
         my_profile = (

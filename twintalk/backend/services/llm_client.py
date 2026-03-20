@@ -21,16 +21,10 @@ def _get_api_key() -> str:
         "",
         "your-hunyuan-api-key-here",
         "sk-your-api-key-here",
+        "your_openai_api_key_here",
     }
-    if api_key in invalid_values:
-        raise RuntimeError(
-            "OPENAI_API_KEY 未配置。请在 backend/.env 中填写腾讯混元控制台生成的 API Key，而不是示例占位符。"
-        )
-
-    if api_key.startswith("AKID"):
-        raise RuntimeError(
-            "当前 OPENAI_API_KEY 看起来是腾讯云 SecretId。OpenAI 兼容接口需要使用混元控制台生成的 API Key，而不是 SecretId/SecretKey。"
-        )
+    if api_key in invalid_values or api_key.startswith("AKID"):
+        return ""
 
     return api_key
 
@@ -87,6 +81,9 @@ def call_llm(
     max_tokens: int = 2000,
 ) -> str:
     """Call the LLM and return the full response text."""
+    if not _get_api_key():
+        return "【离线模拟】未配置 OPENAI_API_KEY。此为离线状态下的占位回复。"
+
     client = get_client()
     messages = [{"role": "system", "content": system_prompt}]
     if history:
@@ -114,6 +111,10 @@ def call_llm_stream(
     max_tokens: int = 2000,
 ) -> Generator[str, None, None]:
     """Call the LLM and yield response chunks (SSE)."""
+    if not _get_api_key():
+        yield "【离线模拟】未配置 OPENAI_API_KEY。此为离线状态下的占位回复。"
+        return
+
     client = get_client()
     messages = [{"role": "system", "content": system_prompt}]
     if history:
@@ -142,6 +143,17 @@ def call_llm_json(
     max_tokens: int = 4000,
 ) -> Optional[dict]:
     """Call the LLM expecting a JSON response. Returns parsed dict or None."""
+    if not _get_api_key():
+        return {
+            "questions": [
+                {
+                    "id": "mock_q_1",
+                    "title": "(离线模拟) 这是系统默认问题选项A还是选项B？",
+                    "options": ["A", "B", "C"]
+                }
+            ]
+        }
+
     client = get_client()
     messages = [
         {

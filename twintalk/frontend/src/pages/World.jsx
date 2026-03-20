@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import Social from './Social'
+import { createPortal } from 'react-dom'
 import {
   deleteDmConversation,
   getDmSuggestion,
@@ -59,8 +59,6 @@ function DmInbox({
     })
   }, [filtered, pinnedConversationIds])
 
-  const totalUnread = conversations.reduce((s, c) => s + (c.unread_count || 0), 0)
-
   return (
     <div className="dm-inbox-shell">
       {/* Toolbar */}
@@ -74,19 +72,13 @@ function DmInbox({
         />
       </div>
 
-      {sorted.length > 0 && (
-        <div className="dm-inbox-stats">
-          {sorted.length} 个会话 · 未读 {totalUnread} · 置顶 {pinnedConversationIds.length}
-        </div>
-      )}
-
       <div className="dm-inbox-list">
         {sorted.length === 0 ? (
           <div className="empty-state">
             <span className="empty-icon">✉️</span>
             <h3>{conversations.length === 0 ? '还没有私信' : '没有匹配结果'}</h3>
             <p>{conversations.length === 0
-              ? '去推荐用户页面发起第一次私信吧！'
+              ? '去首页推荐用户页面发起第一次私信吧！'
               : '试试更换关键词，或清空搜索。'}</p>
           </div>
         ) : (
@@ -303,10 +295,8 @@ function DmChat({
   )
 }
 
-/* ── World (main export) ─────────────────────────────── */
-export default function World({ onHideNav }) {
-  const [tab, setTab] = useState('lobby')
-
+/* ── World (DM Inbox only — no more seg-control) ─────── */
+export default function World({ setHideNav, showToast, onUnreadChange, pendingDmTargetId, onDmStarted }) {
   const [conversations, setConversations] = useState([])
   const [currentConversation, setCurrentConversation] = useState(null)
   const [messages, setMessages] = useState([])
@@ -318,8 +308,6 @@ export default function World({ onHideNav }) {
   const [suggesting, setSuggesting] = useState(false)
   const [pinnedConversationIds, setPinnedConversationIds] = useState([])
 
-  const unreadCount = conversations.reduce((acc, c) => acc + (c.unread_count || 0), 0)
-
   // Load pinned from storage
   useEffect(() => {
     try {
@@ -327,7 +315,7 @@ export default function World({ onHideNav }) {
       if (!saved) return
       const parsed = JSON.parse(saved)
       if (Array.isArray(parsed)) {
-        setPinnedConversationIds(parsed.filter((id) => typeof id === 'number'))
+        setPinnedConversationIds(parsed.filter((id) => typeof id === 'string'))
       }
     } catch (e) {
       console.error('load pinned failed', e)
@@ -341,14 +329,25 @@ export default function World({ onHideNav }) {
   // Tell App whether to hide the bottom nav (when in DM chat)
   useEffect(() => {
     const inChat = currentConversation !== null
-    onHideNav?.(inChat)
-  }, [currentConversation, onHideNav])
+    setHideNav?.(inChat)
+  }, [currentConversation, setHideNav])
+
+  // Handle pending DM target properly via props
+  useEffect(() => {
+    if (pendingDmTargetId) {
+      handleStartDm(pendingDmTargetId)
+      onDmStarted?.()
+    }
+  }, [pendingDmTargetId])
 
   const refreshConversations = async (keepCurrent = true) => {
     const data = await listDmConversations()
-    setConversations(data.conversations || [])
+    const convs = data.conversations || []
+    setConversations(convs)
+    const total = convs.reduce((a, c) => a + (c.unread_count || 0), 0)
+    onUnreadChange?.(total)
     if (keepCurrent && currentConversation) {
-      const updated = (data.conversations || []).find((item) => item.id === currentConversation.id)
+      const updated = convs.find((item) => item.id === currentConversation.id)
       if (updated) setCurrentConversation(updated)
     }
   }
@@ -374,7 +373,6 @@ export default function World({ onHideNav }) {
       const data = await startDmConversation(targetUserId, sourceCommunity)
       const newConv = data.conversation
       setCurrentConversation(newConv)
-      setTab('messages')
       const [msgData] = await Promise.all([
         listDmMessages(newConv.id),
         refreshConversations(),
@@ -386,12 +384,11 @@ export default function World({ onHideNav }) {
     }
   }
 
-  const openMessageInbox = () => {
+  const goBackToInbox = () => {
     setCurrentConversation(null)
     setMessages([])
     setSuggestion('')
     setCommonCommunities([])
-    setTab('messages')
     refreshConversations(false).catch(console.error)
   }
 
@@ -443,6 +440,7 @@ export default function World({ onHideNav }) {
       setCommonCommunities([])
     }
     await refreshConversations()
+    showToast?.('已删除会话')
   }
 
   const handleTogglePinConversation = (convId) => {
@@ -453,69 +451,46 @@ export default function World({ onHideNav }) {
 
   useEffect(() => {
     listDmConversations()
-      .then((data) => setConversations(data.conversations || []))
+      .then((data) => {
+        const convs = data.conversations || []
+        setConversations(convs)
+        const total = convs.reduce((a, c) => a + (c.unread_count || 0), 0)
+        onUnreadChange?.(total)
+      })
       .catch(console.error)
   }, [])
 
-  // If in a DM chat, show full-screen DM (nav is hidden by useEffect above)
-  if (currentConversation) {
-    return (
-      <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-        <DmChat
-          conversation={currentConversation}
-          messages={messages}
-          input={dmInput}
-          setInput={setDmInput}
-          sending={dmSending}
-          agentReply={agentReply}
-          setAgentReply={setAgentReply}
-          suggestion={suggestion}
-          suggesting={suggesting}
-          commonCommunities={commonCommunities}
-          onBack={openMessageInbox}
-          onSend={handleSendDm}
-          onSuggest={handleSuggest}
-        />
-      </div>
-    )
-  }
+  // If in a DM chat, show full-screen DM (breaks out of drawer via position:fixed AND ReactDOM.createPortal)
+  const chatUI = currentConversation ? (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 99999, background: 'var(--c-bg)', display: 'flex', flexDirection: 'column' }}>
+      <DmChat
+        conversation={currentConversation}
+        messages={messages}
+        input={dmInput}
+        setInput={setDmInput}
+        sending={dmSending}
+        agentReply={agentReply}
+        setAgentReply={setAgentReply}
+        suggestion={suggestion}
+        suggesting={suggesting}
+        commonCommunities={commonCommunities}
+        onBack={goBackToInbox}
+        onSend={handleSendDm}
+        onSuggest={handleSuggest}
+      />
+    </div>
+  ) : null
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
-      {/* Tab switcher */}
-      <div style={{
-        padding: '12px 16px',
-        background: 'var(--c-bg)',
-        borderBottom: '1px solid var(--c-border)',
-        position: 'sticky',
-        top: 0,
-        zIndex: 5,
-      }}>
-        <div className="seg-control">
-          <button className={`seg-btn ${tab === 'lobby' ? 'active' : ''}`} onClick={() => setTab('lobby')}>
-            推荐用户
-          </button>
-          <button
-            className={`seg-btn ${tab === 'messages' ? 'active' : ''}`}
-            onClick={openMessageInbox}
-          >
-            私信
-            {unreadCount > 0 && <span className="card-badge">{unreadCount}</span>}
-          </button>
-        </div>
-      </div>
-
-      {tab === 'lobby' && <Social onStartDm={handleStartDm} onOpenMessages={openMessageInbox} />}
-
-      {tab === 'messages' && (
-        <DmInbox
-          conversations={conversations}
-          pinnedConversationIds={pinnedConversationIds}
-          onOpenConversation={openConversation}
-          onTogglePinConversation={handleTogglePinConversation}
-          onDelete={handleDeleteConversation}
-        />
-      )}
-    </div>
+    <>
+      {chatUI && createPortal(chatUI, document.body)}
+      <DmInbox
+        conversations={conversations}
+        pinnedConversationIds={pinnedConversationIds}
+        onOpenConversation={openConversation}
+        onTogglePinConversation={handleTogglePinConversation}
+        onDelete={handleDeleteConversation}
+      />
+    </>
   )
 }

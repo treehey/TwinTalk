@@ -85,6 +85,22 @@ def match_twins():
         db.close()
 
 
+@social_bp.route("/following", methods=["GET"])
+def get_following():
+    """获取当前用户关注的用户 ID 列表。"""
+    user_id = request.headers.get("X-User-Id")
+    if not user_id:
+        return jsonify({"error": "X-User-Id header required"}), 401
+
+    db = get_db()
+    try:
+        service = SocialService(db)
+        ids = service.get_following_ids(user_id)
+        return jsonify({"success": True, "following_ids": ids})
+    finally:
+        db.close()
+
+
 
 
 
