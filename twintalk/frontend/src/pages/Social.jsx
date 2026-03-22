@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { findMatches, followUser, unfollowUser, getFollowing } from '../services/api'
+import { findMatches, followUser, unfollowUser, getFollowing, startDmConversation, startAgentChat } from '../services/api'
 
 /* ── MatchCard – post-style layout ─────────────────── */
-function MatchCard({ match, onStartDm, isFollowing, onFollowChange }) {
+function MatchCard({ match, onStartDm, isFollowing, onFollowChange, showToast }) {
   const [following, setFollowing] = useState(isFollowing)
   const [loading, setLoading] = useState(false)
+  const [agentStarting, setAgentStarting] = useState(false)
 
   const avatarLetter = (match.user.nickname || '匿').trim().slice(0, 1).toUpperCase()
 
@@ -23,6 +24,22 @@ function MatchCard({ match, onStartDm, isFollowing, onFollowChange }) {
       console.error('关注操作失败:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleAgentChat = async () => {
+    if (!window.confirm("确定开始系统模拟你与此人的对话吗？大约需要1分钟生成最终报告。")) return
+    setAgentStarting(true)
+    try {
+      if (showToast) showToast('正在初始化特工对谈...')
+      const convRes = await startDmConversation(match.user.id)
+      await startAgentChat(convRes.conversation.id)
+      if (showToast) showToast('Agent 会话已在后台愉快地进行中！\n稍后可去 Report 页面查看。')
+    } catch (error) {
+      console.error(error)
+      if (showToast) showToast('启动失败: ' + error.message)
+    } finally {
+      setAgentStarting(false)
     }
   }
 
@@ -67,10 +84,10 @@ function MatchCard({ match, onStartDm, isFollowing, onFollowChange }) {
         </div>
       )}
 
-      {/* Post actions: DM button */}
+      {/* Post actions: DM button & Agent autochat button */}
       <div className="post-actions">
         <button
-          className="post-action-btn"
+          className="dm-chat-btn"
           onClick={() => onStartDm(match.user.id)}
           aria-label="私信"
         >
@@ -80,13 +97,32 @@ function MatchCard({ match, onStartDm, isFollowing, onFollowChange }) {
           </svg>
           发私信
         </button>
+
+        <button
+          className="agent-chat-btn"
+          onClick={handleAgentChat}
+          disabled={agentStarting}
+          aria-label="Agent 对谈"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="11" width="18" height="10" rx="2" />
+            <circle cx="9" cy="16" r="1" fill="currentColor" />
+            <circle cx="15" cy="16" r="1" fill="currentColor" />
+            <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+            <path d="M12 2v1" />
+            <path d="M19 5l-1 1" />
+            <path d="M5 5l1 1" />
+          </svg>
+          {agentStarting ? '启动中...' : 'Agent对谈'}
+        </button>
       </div>
     </article>
   )
 }
 
+
 /* ── Social ─────────────────────────────────────────── */
-export default function Social({ onStartDm }) {
+export default function Social({ onStartDm, showToast }) {
   const [matches, setMatches] = useState([])
   const [followingSet, setFollowingSet] = useState(new Set())
   const [loading, setLoading] = useState(true)
@@ -175,6 +211,7 @@ export default function Social({ onStartDm }) {
               onStartDm={onStartDm}
               isFollowing={followingSet.has(match.user.id)}
               onFollowChange={() => setFollowingSet((prev) => new Set(prev))}
+              showToast={showToast}
             />
           ))}
         </div>

@@ -4,7 +4,8 @@ import Onboarding from './pages/Onboarding'
 import Social from './pages/Social'
 import World from './pages/World'
 import Ego from './pages/Ego'
-import { HomeIcon, MessageIcon, UserIcon, LogoutIcon, MagicActionIcon } from './icons'
+import Report from './pages/Report'
+import { HomeIcon, MessageIcon, UserIcon, LogoutIcon, MagicActionIcon, ReportIcon } from './icons'
 
 /* ── Toast Component ── */
 function Toast({ message, onClose }) {
@@ -124,13 +125,16 @@ export default function App() {
       {/* ── Main Content Area ── */}
       <main className="mobile-main">
         <div className={`page-container ${page === 'social' ? 'page-active' : 'page-hidden'}`}>
-          <Social onStartDm={handleStartDm} />
+          <Social onStartDm={handleStartDm} showToast={showToast} />
         </div>
         <div className={`page-container ${page === 'ego' ? 'page-active' : 'page-hidden'}`}>
           <Ego
             setHideNav={setHideNav}
             showToast={showToast}
           />
+        </div>
+        <div className={`page-container ${page === 'report' ? 'page-active' : 'page-hidden'}`}>
+          <Report isActive={page === 'report'} />
         </div>
       </main>
 
@@ -159,6 +163,14 @@ export default function App() {
         <button className="radial-item planner" onClick={() => { showToast('Planner (规划师) 功能即将上线'); setAgentMenuOpen(false); }}>
           <div className="icon" style={{ color: '#f59e0b' }}>P</div>
           <span>Planner</span>
+        </button>
+        <button className="radial-item report" onClick={() => { 
+          showToast('正在加载报告页面...');
+          setPage('report'); 
+          setAgentMenuOpen(false); 
+        }}>
+          <div className="icon" style={{ color: '#3b82f6' }}><ReportIcon /></div>
+          <span>Report</span>
         </button>
       </div>
 

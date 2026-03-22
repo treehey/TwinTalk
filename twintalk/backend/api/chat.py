@@ -67,6 +67,33 @@ def send_message():
         db.close()
 
 
+@chat_bp.route("/mirror_greeting", methods=["POST"])
+def get_mirror_greeting():
+    """获取镜像聊天（深层自我对谈）的开场引导话题。"""
+    user_id = request.headers.get("X-User-Id")
+    if not user_id:
+        return jsonify({"error": "X-User-Id header required"}), 401
+
+    data = request.get_json()
+    session_id = data.get("session_id")
+    if not session_id:
+        return jsonify({"error": "session_id required"}), 400
+
+    db = get_db()
+    try:
+        service = ChatService(db)
+        result = service.generate_mirror_greeting(user_id=user_id, session_id=session_id)
+        return jsonify({
+            "success": True,
+            "session_id": session_id,
+            "reply": result.get("greeting", "你好，我是你的数字孪生。"),
+            "suggestions": result.get("suggestions", []),
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        db.close()
+
 @chat_bp.route("/message/stream", methods=["POST"])
 def stream_message():
     """SSE 流式对话接口。"""

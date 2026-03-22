@@ -50,6 +50,43 @@ class ChatService:
 
         return reply
 
+    def generate_mirror_greeting(self, user_id: str, session_id: str) -> dict:
+        """Generate a proactive guided question as the initial greeting and suggested responses for mirror tests."""
+        shade_name = "mirror_test"
+        system_prompt = self.prompt_engine.get_system_prompt(user_id, shade_name)
+        
+        json_prompt = f"""
+{system_prompt}
+
+【任务要求】
+请针对当前用户的画像分析其缺失点或薄弱的部分，并生成一个镜像自我对话的开场白。同时，为了引导用户，请提供 3 个确切的引导式提问选项（比如关于音乐、游戏、日常习惯、情绪等非常具体的切入点），供用户直接选择来开启话题。
+
+必须返回严格有效的 JSON 格式，包含以下字段：
+{{
+    "greeting": "一段自然亲切的开场白，直接抛出你想探讨的话题方向。",
+    "suggestions": [
+        "你平常喜欢听什么类型的歌？",
+        "你一直想学但没去学的一项技能是什么？",
+        "上一次让你感到完全放松是什么时候？"
+    ]
+}}
+"""
+        try:
+            result = call_llm_json(json_prompt)
+            greeting = result.get("greeting", "你好！我准备好进行对谈了，今天有什么想梳理的心绪吗？")
+            suggestions = result.get("suggestions", ["我想聊聊最近的开心事", "谈谈工作/学习压力", "分享一个有趣的爱好"])
+        except Exception:
+            greeting = "嗨，我是你的数字孪生。今天有什么想梳理的心绪吗？"
+            suggestions = ["我想聊聊最近的开心事", "谈谈工作/学习压力", "分享一个有趣的爱好"]
+        
+        # Save only the assistant's greeting, omit the dummy user prompt
+        self._save_message(user_id, session_id, "assistant", greeting)
+        
+        return {
+            "greeting": greeting,
+            "suggestions": suggestions
+        }
+
     def chat_with_twin_stream(
         self,
         user_id: str,
@@ -192,8 +229,11 @@ class ChatService:
             if is_mirror:
                 prompt = MIRROR_INSIGHT_PROMPT.format(conversation=conv_text)
                 extracted = call_llm_json(prompt)
-                if extracted and extracted.get("insights"):
-                    self._save_mirror_insights(user_id, extracted["insights"])
+                if extracted:
+                    if extracted.get("insights"):
+                        self._save_mirror_insights(user_id, extracted["insights"])
+                    if extracted.get("new_tags"):
+                        self._apply_extracted_traits(profile, {"new_interests": extracted["new_tags"]})
             else:
                 prompt = TRAIT_EXTRACTION_PROMPT.format(
                     conversation=conv_text,

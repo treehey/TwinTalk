@@ -232,3 +232,31 @@ export async function syncDmMemory() {
     method: 'POST',
   })
 }
+
+// ---- Agent Chat & Reports ----
+export async function startAgentChat(conversationId) {
+  return request(`/social/dm/conversations/${conversationId}/agent-chat`, {
+    method: 'POST',
+  })
+}
+
+export async function getAgentReports() {
+  return request('/reports/')
+}
+
+export async function getAgentReport(reportId) {
+  return request(`/reports/${reportId}`)
+}
+
+export async function deleteAgentReport(reportId) {
+  return request(`/reports/${reportId}`, {
+    method: 'DELETE',
+  })
+}
+
+export async function getMirrorGreeting(sessionId) {
+  return request('/chat/mirror_greeting', {
+    method: 'POST',
+    body: JSON.stringify({ session_id: sessionId })
+  })
+}

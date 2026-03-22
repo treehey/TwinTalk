@@ -58,17 +58,22 @@ def get_my_profile():
         # Calculate realistic fitness index
         from models.profile import KeyMemory
         memories_count = db.query(KeyMemory).filter_by(user_id=user_id).count()
-        fitness = 50
+        fitness = 20
         if profile.bio_summary:
-            fitness += 10
+            fitness += 5 if len(profile.bio_summary) > 20 else 2
         if profile.interests and len(profile.interests) > 0:
-            fitness += 10
+            fitness += min(15, len(profile.interests) * 2)
         if profile.personality_traits and len(profile.personality_traits) > 0:
-            fitness += 10
+            fitness += min(15, len(profile.personality_traits) * 2)
         if profile.extra_info:
-            fitness += min(20, len(profile.extra_info) * 3)
-        fitness += min(9, memories_count * 2)
-        fitness = min(99, fitness)
+            fitness += min(15, len(profile.extra_info.get("personality_keywords", [])) * 2)
+            if profile.extra_info.get("mbti"):
+                fitness += 5
+        if profile.shades:
+            fitness += min(10, len(profile.shades) * 3)
+            
+        fitness += min(20, int(memories_count * 1.5))
+        fitness = min(99, int(fitness))
 
         return jsonify({
             "success": True,

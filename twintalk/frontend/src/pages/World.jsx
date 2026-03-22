@@ -8,6 +8,7 @@ import {
   markDmRead,
   sendDmMessage,
   startDmConversation,
+  startAgentChat,
 } from '../services/api'
 import { BackIcon, SendIcon } from '../icons'
 
@@ -150,6 +151,8 @@ function DmChat({
   onBack,
   onSend,
   onSuggest,
+  onStartAgentChat,
+  agentChatting,
 }) {
   const bottomRef = useRef(null)
 
@@ -285,6 +288,17 @@ function DmChat({
           )}
         </div>
 
+        <div style={{ padding: '0 16px', marginBottom: '8px' }}>
+          <button
+            className="btn btn-sm btn-ghost"
+            style={{ width: '100%', color: 'var(--c-accent)', border: '1px solid var(--c-accent)' }}
+            onClick={onStartAgentChat}
+            disabled={agentChatting}
+          >
+             {agentChatting ? '🤖 Agent 正在沟通中...' : '🤖 开始 Agent 自动对谈并生成报告'}
+          </button>
+        </div>
+
         {suggestion && (
           <div className="dm-suggestion-box">
             建议：{suggestion}
@@ -307,6 +321,7 @@ export default function World({ setHideNav, showToast, onUnreadChange, pendingDm
   const [suggestion, setSuggestion] = useState('')
   const [suggesting, setSuggesting] = useState(false)
   const [pinnedConversationIds, setPinnedConversationIds] = useState([])
+  const [agentChatting, setAgentChatting] = useState(false)
 
   // Load pinned from storage
   useEffect(() => {
@@ -438,6 +453,39 @@ export default function World({ setHideNav, showToast, onUnreadChange, pendingDm
     }
   }
 
+  const handleStartAgentChat = async () => {
+    if (!currentConversation || agentChatting) return
+    setAgentChatting(true)
+    showToast?.('已启动 Agent 对接，请稍候在屏幕中查看进度或等待报告')
+    const convId = currentConversation.id
+    try {
+      await startAgentChat(convId)
+      
+      let ticks = 0
+      const poll = setInterval(async () => {
+        ticks++
+        try {
+          const data = await listDmMessages(convId)
+          // We only update messages if we are still viewing the active conversation
+          setMessages(prev => {
+              // Because of closure we just use the functional update or ignore if we switched tabs.
+              return data.messages || []
+          })
+          refreshConversations(false).catch(() => {})
+        } catch(e) {}
+        
+        if (ticks >= 20) { // 20 * 3s = 60s
+           clearInterval(poll)
+           setAgentChatting(false)
+           showToast?.('Agent 自动对话可能已结束，请前往 Report 页面查看总结报告')
+        }
+      }, 3000)
+    } catch (e) {
+      showToast?.('启动失败: ' + e.message)
+      setAgentChatting(false)
+    }
+  }
+
   const handleDeleteConversation = async (conv) => {
     await deleteDmConversation(conv.id)
     setPinnedConversationIds((prev) => prev.filter((id) => id !== conv.id))
@@ -484,6 +532,8 @@ export default function World({ setHideNav, showToast, onUnreadChange, pendingDm
         onBack={goBackToInbox}
         onSend={handleSendDm}
         onSuggest={handleSuggest}
+        onStartAgentChat={handleStartAgentChat}
+        agentChatting={agentChatting}
       />
     </div>
   ) : null

@@ -284,7 +284,6 @@ def archive_dm_conversation(conversation_id):
     finally:
         db.close()
 
-
 @social_bp.route("/dm/stats", methods=["GET"])
 def get_dm_stats():
     """Get demo DM stats used by Ego page."""
@@ -305,17 +304,42 @@ def get_dm_stats():
 
 @social_bp.route("/dm/sync-memory", methods=["POST"])
 def sync_dm_memory():
-    """Sync DM messages into key memories with explicit user action."""
-    user_id = request.headers.get("X-User-Id")
-    if not user_id:
-        return jsonify({"error": "X-User-Id header required"}), 401
-
+    """Scan all explicit DM messages and extract possible key memories."""
+    current_user_id = request.headers.get("X-User-Id")
+    if not current_user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+        
     db = get_db()
     try:
         service = DirectMessageService(db)
-        result = service.sync_dm_to_memories(user_id)
-        return jsonify({"success": True, **result})
+        synced_count = service.sync_dm_history_to_memory(current_user_id)
+        return jsonify({"success": True, "synced": synced_count})
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": str(e)}), 400
     finally:
         db.close()
+
+
+@social_bp.route("/dm/conversations/<conversation_id>/agent-chat", methods=["POST"])
+def start_agent_chat(conversation_id: str):
+    """Starts autonomous agent-to-agent chatting and report generation."""
+    current_user_id = request.headers.get("X-User-Id")
+    if not current_user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+        
+    db = get_db()
+    try:
+        service = DirectMessageService(db)
+        conv = service._get_conversation_or_raise(current_user_id, conversation_id)
+        target_user_id = conv.participant_b_id if conv.participant_a_id == current_user_id else conv.participant_a_id
+
+        from services.agent_chat_service import AgentChatService
+        agent_svc = AgentChatService(db)
+        agent_svc.start_agent_chat_background(conversation_id, current_user_id, target_user_id, rounds=10)
+        
+        return jsonify({"success": True, "message": "Agent chat started in background"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+    finally:
+        db.close()
+

@@ -1676,6 +1676,11 @@ h4,
   /* Above backdrop */
   pointer-events: none;
   /* Pass clicks when closed */
+  width: 280px;
+  height: 200px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
 }
 
 .radial-menu-wrapper.open {
@@ -1710,7 +1715,7 @@ h4,
 
 .radial-item:active {
   background: var(--c-interactive-bg);
-  transform: scale(0.95) !important;
+  opacity: 0.8;
 }
 
 .radial-item .icon {
@@ -1721,12 +1726,17 @@ h4,
 
 .radial-menu-wrapper.open .radial-item.advisor {
   opacity: 1;
-  transform: scale(1) translate(-75px, -65px);
+  transform: scale(1) translate(-85px, -45px);
+}
+
+.radial-menu-wrapper.open .radial-item.report {
+  opacity: 1;
+  transform: scale(1) translate(0, -95px);
 }
 
 .radial-menu-wrapper.open .radial-item.planner {
   opacity: 1;
-  transform: scale(1) translate(75px, -65px);
+  transform: scale(1) translate(85px, -45px);
 }
 
 /* Nav Action Button animations */
@@ -1877,3 +1887,433 @@ h4,
   height: auto;
   min-height: 100%;
 }
+
+/* ===== Report Page ===== */
+
+/* -- Report List Page -- */
+.report-list-page {
+  padding: 0 0 100px;
+  height: 100%;
+  overflow-y: auto;
+  background: var(--c-bg);
+}
+
+.report-page-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 24px 20px 16px;
+  border-bottom: 1px solid var(--c-border);
+  background: linear-gradient(135deg, rgba(244, 196, 20, 0.06) 0%, rgba(157, 133, 255, 0.06) 100%);
+}
+
+.report-page-header-icon {
+  font-size: 32px;
+  flex-shrink: 0;
+}
+
+.report-page-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--c-text-primary);
+  margin: 0;
+  line-height: 1.2;
+}
+
+.report-page-subtitle {
+  font-size: 13px;
+  color: var(--c-text-secondary);
+  margin: 2px 0 0;
+}
+
+.report-list {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 16px;
+  gap: 10px;
+}
+
+.report-list-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--c-bg);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  width: 100%;
+  font-family: inherit;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.report-list-card:hover {
+  border-color: var(--c-accent);
+  box-shadow: 0 4px 16px rgba(244, 196, 20, 0.12);
+  transform: translateY(-1px);
+}
+
+.report-list-card:active {
+  transform: scale(0.98);
+}
+
+.report-list-card-left {
+  flex-shrink: 0;
+}
+
+.report-list-card-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--gradient-main);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 800;
+  color: white;
+  box-shadow: 0 2px 8px rgba(157, 133, 255, 0.25);
+}
+
+.report-list-card-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.report-list-card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--c-text-primary);
+  line-height: 1.3;
+}
+
+.report-list-card-subtitle {
+  font-size: 12px;
+  color: var(--c-accent);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.report-list-card-time {
+  font-size: 12px;
+  color: var(--c-text-secondary);
+  margin-top: 3px;
+}
+
+.report-list-card-arrow {
+  font-size: 22px;
+  color: var(--c-text-secondary);
+  flex-shrink: 0;
+  opacity: 0.5;
+}
+
+/* -- Report Empty / Loading / Error states -- */
+.report-loading,
+.report-error,
+.report-empty {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.report-loading p,
+.report-error p {
+  color: var(--c-text-secondary);
+  margin-top: 12px;
+  font-size: 14px;
+}
+
+.report-empty-icon {
+  font-size: 56px;
+  display: block;
+  margin-bottom: 16px;
+  opacity: 0.8;
+}
+
+.report-empty h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--c-text-primary);
+  margin-bottom: 8px;
+}
+
+.report-empty p {
+  font-size: 14px;
+  color: var(--c-text-secondary);
+  line-height: 1.7;
+}
+
+/* -- Report Detail Page -- */
+.report-detail-page {
+  padding: 0 0 100px;
+  height: 100%;
+  overflow-y: auto;
+  background: var(--c-bg);
+}
+
+.report-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: var(--c-text-secondary);
+  font-size: 14px;
+  font-family: inherit;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.report-back-btn:hover {
+  color: var(--c-accent);
+}
+
+.report-detail-header {
+  padding: 20px 20px 24px;
+  text-align: center;
+  background: linear-gradient(135deg, rgba(244, 196, 20, 0.08) 0%, rgba(157, 133, 255, 0.08) 100%);
+  border-bottom: 1px solid var(--c-border);
+}
+
+.report-detail-emoji {
+  font-size: 40px;
+  margin-bottom: 12px;
+}
+
+.report-detail-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--c-text-primary);
+  margin: 0 0 12px;
+  line-height: 1.3;
+}
+
+.report-detail-participants {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.report-participant-chip {
+  display: inline-block;
+  padding: 4px 14px;
+  background: rgba(157, 133, 255, 0.1);
+  border: 1px solid rgba(157, 133, 255, 0.2);
+  border-radius: var(--radius-full);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--c-text-primary);
+}
+
+.report-vs {
+  font-size: 16px;
+  color: var(--c-accent);
+}
+
+.report-detail-time {
+  font-size: 12px;
+  color: var(--c-text-secondary);
+  margin-top: 4px;
+}
+
+/* -- Report Sections -- */
+.report-section {
+  padding: 20px;
+  border-bottom: 1px solid var(--c-border);
+}
+
+.report-section:last-child {
+  border-bottom: none;
+}
+
+.report-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.report-section-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.report-section-header h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--c-text-primary);
+  margin: 0;
+}
+
+.report-section-text {
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--c-text-primary);
+  margin: 0;
+}
+
+/* Tag lists for common ground / divergence */
+.report-tag-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.report-tag-item {
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--c-text-primary);
+}
+
+.report-tag-green {
+  background: rgba(16, 185, 129, 0.08);
+  border-left: 3px solid #10b981;
+}
+
+.report-tag-orange {
+  background: rgba(245, 158, 11, 0.08);
+  border-left: 3px solid #f59e0b;
+}
+
+/* Quotes / Highlights */
+.report-quotes {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.report-quote {
+  margin: 0;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, rgba(244, 196, 20, 0.05) 0%, rgba(157, 133, 255, 0.05) 100%);
+  border-left: 3px solid var(--c-accent);
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--c-text-primary);
+  font-style: italic;
+}
+
+/* Match analysis */
+.report-section-match {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.04) 0%, rgba(157, 133, 255, 0.04) 100%);
+}
+
+.report-match-text {
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--c-text-primary);
+  margin: 0;
+  font-style: italic;
+}
+
+/* ===== Agent Chat Button (Social Page) ===== */
+.agent-chat-btn {
+  background: linear-gradient(135deg, rgba(244, 196, 20, 0.12) 0%, rgba(157, 133, 255, 0.12) 100%);
+  border: 1px solid rgba(244, 196, 20, 0.25);
+  color: var(--c-accent);
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 7px 14px;
+  border-radius: var(--radius-full);
+  font-family: inherit;
+  transition: all 0.25s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.agent-chat-btn:hover {
+  background: linear-gradient(135deg, rgba(244, 196, 20, 0.22) 0%, rgba(157, 133, 255, 0.22) 100%);
+  border-color: var(--c-accent);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(244, 196, 20, 0.2);
+}
+
+.agent-chat-btn:active {
+  transform: scale(0.95);
+}
+
+.agent-chat-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  animation: agent-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes agent-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 0.9; }
+}
+
+/* ===== DM Chat Button (Social Page) ===== */
+.dm-chat-btn {
+  background: var(--c-bg);
+  border: 1px solid var(--c-border);
+  color: var(--c-text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 7px 14px;
+  border-radius: var(--radius-full);
+  font-family: inherit;
+  transition: all 0.25s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.dm-chat-btn:hover {
+  border-color: var(--c-text-secondary);
+  background: var(--c-interactive-bg);
+  transform: translateY(-1px);
+}
+
+.dm-chat-btn:active {
+  transform: scale(0.95);
+}
+
+/* ===== Mirror Chat Suggestion Buttons ===== */
+.mirror-suggestion-btn {
+  background: #F5F5F5;
+  color: #111111;
+  border: 1px solid #EAEAEA;
+  text-align: left;
+  height: auto;
+  padding: 12px 16px;
+  white-space: normal;
+  border-radius: var(--radius-md);
+  justify-content: flex-start;
+  width: 90%;
+  font-size: 14px;
+  line-height: 1.5;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+  font-family: inherit;
+  font-weight: 500;
+}
+
+.mirror-suggestion-btn:hover {
+  background: #EBEBEB;
+  border-color: #DDDDDD;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.mirror-suggestion-btn:active {
+  transform: scale(0.98);
+}
