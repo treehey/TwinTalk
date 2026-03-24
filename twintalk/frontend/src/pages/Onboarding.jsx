@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import {
   login,
   register,
+  sendSmsCode,
   getOnboardingQuestionnaire,
   getQuestionnaire,
   submitAnswers,
@@ -14,22 +15,70 @@ function LoginStep({ onDone }) {
   const [tab, setTab] = useState('login')   // 'login' | 'register'
   const [phoneNumber, setPhoneNumber] = useState('')
   const [password, setPassword] = useState('')
+  const [smsCode, setSmsCode] = useState('')
   const [loading, setLoading] = useState(false)
+  const [sendingSms, setSendingSms] = useState(false)
+  const [cooldown, setCooldown] = useState(0)
+  const [smsHint, setSmsHint] = useState('')
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (cooldown <= 0) return undefined
+    const timer = setInterval(() => {
+      setCooldown((prev) => (prev > 0 ? prev - 1 : 0))
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [cooldown])
+
+  const handleSendSms = async () => {
+    setError('')
+    const phone = phoneNumber.trim()
+    if (!phone) {
+      setError('请先输入手机号')
+      return
+    }
+
+    setSendingSms(true)
+    try {
+      const data = await sendSmsCode(phone, tab)
+      const retryAfter = Number(data?.retry_after || 60)
+      setCooldown(retryAfter)
+      if (data?.debug_code) {
+        setSmsHint(`开发模式验证码：${data.debug_code}`)
+      } else {
+        setSmsHint('验证码已发送，请查看手机短信')
+      }
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSendingSms(false)
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
     setLoading(true)
     try {
+      if (!smsCode.trim()) {
+        setError('请输入短信验证码')
+        setLoading(false)
+        return
+      }
+
+      const smsPayload = {
+        code: smsCode.trim(),
+        purpose: tab,
+      }
+
       let data
       if (tab === 'register') {
         if (!phoneNumber.trim()) { setError('请输入手机号'); setLoading(false); return }
         if (password.length < 6) { setError('密码不能少于 6 位'); setLoading(false); return }
-        data = await register(phoneNumber.trim(), password)
+        data = await register(phoneNumber.trim(), password, smsPayload)
       } else {
         if (!phoneNumber.trim() || !password) { setError('请输入手机号和密码'); setLoading(false); return }
-        data = await login(phoneNumber.trim(), password)
+        data = await login(phoneNumber.trim(), password, smsPayload)
       }
       onDone(data.user)
     } catch (err) {
@@ -67,8 +116,8 @@ function LoginStep({ onDone }) {
 
         {/* Bauhaus Tabs */}
         <div style={{ display: 'flex', borderBottom: '2px solid var(--border-subtle)', marginBottom: '24px' }}>
-          <button style={tabStyle('login')} onClick={() => { setTab('login'); setError('') }}>登录</button>
-          <button style={tabStyle('register')} onClick={() => { setTab('register'); setError('') }}>注册</button>
+          <button style={tabStyle('login')} onClick={() => { setTab('login'); setError(''); setSmsHint('') }}>登录</button>
+          <button style={tabStyle('register')} onClick={() => { setTab('register'); setError(''); setSmsHint('') }}>注册</button>
         </div>
 
         <form onSubmit={handleSubmit}>
@@ -93,6 +142,36 @@ function LoginStep({ onDone }) {
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
+          <div className="form-group">
+            <label className="form-label">短信验证码</label>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'stretch' }}>
+              <input
+                className="form-input"
+                type="text"
+                placeholder="请输入 6 位验证码"
+                value={smsCode}
+                onChange={(e) => setSmsCode(e.target.value)}
+                style={{ flex: 1 }}
+              />
+              <button
+                className="btn btn-secondary"
+                type="button"
+                onClick={handleSendSms}
+                disabled={sendingSms || cooldown > 0}
+                style={{ whiteSpace: 'nowrap' }}
+              >
+                {sendingSms ? '发送中...' : cooldown > 0 ? `${cooldown}s` : '发送验证码'}
+              </button>
+            </div>
+            <p style={{ marginTop: '8px', fontSize: '13px', color: 'var(--text-secondary)' }}>
+              验证码将发送到你的手机，请注意查收
+            </p>
+            {!!smsHint && (
+              <p style={{ marginTop: '6px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                {smsHint}
+              </p>
+            )}
+          </div>
           {error && (
             <p style={{ color: 'var(--accent-danger)', fontSize: '14px', marginBottom: '16px' }}>
               {error}
@@ -101,7 +180,7 @@ function LoginStep({ onDone }) {
           <button className="btn btn-primary btn-lg" type="submit" disabled={loading} style={{ width: '100%' }}>
             {loading
               ? <span className="loading-dots"><span /><span /><span /></span>
-              : tab === 'register' ? '注册并开始 →' : '登录 →'}
+              : tab === 'register' ? '注册并开始' : '登录'}
           </button>
         </form>
         <p style={{ marginTop: '24px', fontSize: '13px', color: 'var(--text-muted)' }}>
@@ -254,7 +333,7 @@ function QuestionnaireStep({ user, onDone }) {
                     onClick={() => setAnswer(choice)}
                     style={{ textAlign: 'left', justifyContent: 'flex-start' }}
                   >
-                    {currentAnswer === choice && '✓ '}{choice}
+                    {currentAnswer === choice && '• '}{choice}
                   </button>
                 ))}
               </div>
@@ -286,7 +365,7 @@ function QuestionnaireStep({ user, onDone }) {
         <div style={{ display: 'flex', gap: '12px', marginTop: '28px' }}>
           {current > 0 && (
             <button className="btn btn-ghost" onClick={() => setCurrent((c) => c - 1)}>
-              ← 上一题
+              上一题
             </button>
           )}
           <button
@@ -297,7 +376,7 @@ function QuestionnaireStep({ user, onDone }) {
           >
             {submitting
               ? <span className="loading-dots"><span /><span /><span /></span>
-              : current === questions.length - 1 ? '完成' : '下一题 →'}
+              : current === questions.length - 1 ? '完成' : '下一题'}
           </button>
         </div>
       </div>

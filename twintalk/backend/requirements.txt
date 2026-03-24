@@ -20,4 +20,4 @@ python-dotenv==1.0.1
 pytest==8.3.4
 pytest-flask==1.3.0
 
-psycopg2-binary==2.9.9  # 仅 PostgreSQL 生产环境需要，本地 SQLite 开发不需要
+# psycopg2-binary==2.9.9  # 仅 PostgreSQL 生产环境需要，本地 SQLite 开发不需要

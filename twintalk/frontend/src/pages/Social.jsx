@@ -164,7 +164,7 @@ export default function Social({ onStartDm, showToast }) {
   if (error) {
     return (
       <div className="empty-state">
-        <p style={{ color: 'var(--text-error)' }}>⚠️ {error}</p>
+        <p style={{ color: 'var(--text-error)' }}>{error}</p>
         <button className="btn btn-primary" onClick={() => loadMatches()} style={{ marginTop: '16px' }}>重试</button>
       </div>
     )
@@ -182,7 +182,7 @@ export default function Social({ onStartDm, showToast }) {
         justifyContent: 'space-between',
       }}>
         <div>
-          <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--c-text-primary)' }}>🎯 为你推荐</div>
+          <div style={{ fontSize: '16px', fontWeight: 700, color: 'var(--c-text-primary)' }}>为你推荐</div>
           <div style={{ fontSize: '12px', color: 'var(--c-text-secondary)', marginTop: '2px' }}>基于兴趣、性格、价值观综合匹配</div>
         </div>
         <button
@@ -197,7 +197,7 @@ export default function Social({ onStartDm, showToast }) {
       {/* Match list */}
       {matches.length === 0 ? (
         <div className="empty-state">
-          <span className="empty-icon">🌐</span>
+          <span className="empty-icon">-</span>
           <h3>暂无推荐用户</h3>
           <p>先完善你的画像，让算法更了解你。</p>
           <button className="btn btn-primary" onClick={() => loadMatches()}>重新加载</button>

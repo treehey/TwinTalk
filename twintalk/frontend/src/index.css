@@ -3,27 +3,27 @@
 /* ===== CSS Custom Properties – Mobile-First TwinTalk Theme ===== */
 :root {
   /* Reference design palette (from design.html) */
-  --c-bg: #FFFFFF;
-  --c-feed-bg: #FFFFFF;
+  --c-bg: #F5F3ED;
+  --c-feed-bg: #F5F3ED;
   --c-text-primary: #3D3528;
   --c-text-secondary: #7A7568;
-  --c-border: #F0EFE8;
-  --c-interactive-bg: #FFFBE6;
-  --c-accent: #F4C414;
-  /* TwinTalk Gold */
-  --c-card-start: #FFFEF0;
-  --c-card-end: #FFFFFF;
+  --c-border: #E8E6E0;
+  --c-interactive-bg: #FEFDFB;
+  --c-accent: #7C4C98;
+  /* TwinTalk Purple */
+  --c-card-start: #FEFDFB;
+  --c-card-end: #F5F3ED;
 
   /* Gradient shorthand */
-  --gradient-main: linear-gradient(135deg, #F4C414, #FACC15);
-  --gradient-gold: linear-gradient(135deg, #F5D300, #F4C414);
+  --gradient-main: linear-gradient(135deg, #7C4C98, #9B6FB8);
+  --gradient-gold: linear-gradient(135deg, #8B5BA3, #7C4C98);
 
   /* Legacy compat variables (used by existing components) */
   --bg-primary: var(--c-feed-bg);
   --bg-secondary: var(--c-bg);
-  --bg-card: rgba(255, 255, 255, 0.92);
-  --bg-glass: rgba(255, 255, 255, 0.7);
-  --bg-glass-hover: rgba(248, 247, 253, 0.95);
+  --bg-card: rgba(245, 243, 237, 0.92);
+  --bg-glass: rgba(245, 243, 237, 0.7);
+  --bg-glass-hover: rgba(254, 253, 251, 0.95);
 
   --accent-primary: var(--c-accent);
   --accent-secondary: #FDE047;
@@ -48,11 +48,11 @@
   --border-glass: rgba(255, 255, 255, 0.8);
   --border-active: rgba(244, 196, 20, 0.4);
 
-  --shadow-sm: 0 2px 8px rgba(244, 196, 20, 0.04);
-  --shadow-md: 0 4px 20px rgba(244, 196, 20, 0.10);
-  --shadow-lg: 0 8px 32px rgba(244, 196, 20, 0.14);
-  --shadow-glow: 0 8px 28px rgba(244, 196, 20, 0.28);
-  --shadow-glow-accent: 0 8px 32px rgba(244, 196, 20, 0.38);
+  --shadow-sm: 0 2px 8px rgba(124, 76, 152, 0.04);
+  --shadow-md: 0 4px 20px rgba(124, 76, 152, 0.10);
+  --shadow-lg: 0 8px 32px rgba(124, 76, 152, 0.14);
+  --shadow-glow: 0 8px 28px rgba(124, 76, 152, 0.28);
+  --shadow-glow-accent: 0 8px 32px rgba(124, 76, 152, 0.38);
 
   --radius-sm: 8px;
   --radius-md: 12px;
@@ -2316,4 +2316,4 @@ h4,
 
 .mirror-suggestion-btn:active {
   transform: scale(0.98);
-}
+}
