@@ -1,121 +1,25 @@
 """Authentication API — username/password registration and login."""
 
 import uuid
-import random
-from datetime import datetime, timedelta
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from database import get_db
 from models.user import User
-from services.sms_service import send_verification_code, SmsSendError
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
-SMS_CODE_TTL_SECONDS = 300
-SMS_CODE_MAX_ATTEMPTS = 5
-SMS_SEND_COOLDOWN_SECONDS = 60
-_sms_code_store = {}
-
-
-def _cleanup_sms_store(now: datetime):
-    expired_tokens = [
-        token
-        for token, payload in _sms_code_store.items()
-        if payload["expires_at"] <= now or payload.get("attempts_left", 0) <= 0
-    ]
-    for token in expired_tokens:
-        _sms_code_store.pop(token, None)
-
-
-def _build_sms_key(phone_number: str, purpose: str):
-    return f"{purpose}:{phone_number}"
-
-
-def _verify_sms_code(phone_number: str, purpose: str, code: str):
-    now = datetime.utcnow()
-    _cleanup_sms_store(now)
-
-    key = _build_sms_key(phone_number, purpose)
-    payload = _sms_code_store.get(key)
-    if not payload:
-        return False, "验证码已过期或无效，请重新发送"
-
-    if payload["code"] != code.strip():
-        payload["attempts_left"] = payload.get("attempts_left", SMS_CODE_MAX_ATTEMPTS) - 1
-        if payload["attempts_left"] <= 0:
-            _sms_code_store.pop(key, None)
-            return False, "验证码错误次数过多，请重新发送"
-        return False, "验证码错误"
-
-    _sms_code_store.pop(key, None)
-    return True, ""
-
-
-@auth_bp.route("/send-sms-code", methods=["POST"])
-def send_sms_code():
-    """发送短信验证码。Body: { phone_number, purpose }"""
-    data = request.get_json(silent=True) or {}
-    phone_number = (data.get("phone_number") or "").strip()
-    purpose = (data.get("purpose") or "login").strip().lower()
-
-    if not phone_number:
-        return jsonify({"error": "手机号不能为空"}), 400
-    if purpose not in {"login", "register"}:
-        return jsonify({"error": "验证码用途不合法"}), 400
-
-    now = datetime.utcnow()
-    _cleanup_sms_store(now)
-    key = _build_sms_key(phone_number, purpose)
-    existing = _sms_code_store.get(key)
-
-    if existing and existing.get("next_send_at") and existing["next_send_at"] > now:
-        retry_after = int((existing["next_send_at"] - now).total_seconds())
-        return jsonify({"error": "发送过于频繁，请稍后再试", "retry_after": max(retry_after, 1)}), 429
-
-    code = f"{random.randint(0, 999999):06d}"
-    try:
-        send_result = send_verification_code(phone_number, code)
-    except SmsSendError as e:
-        return jsonify({"error": str(e)}), 503
-
-    _sms_code_store[key] = {
-        "code": code,
-        "expires_at": now + timedelta(seconds=SMS_CODE_TTL_SECONDS),
-        "attempts_left": SMS_CODE_MAX_ATTEMPTS,
-        "next_send_at": now + timedelta(seconds=SMS_SEND_COOLDOWN_SECONDS),
-    }
-
-    payload = {
-        "success": True,
-        "ttl_seconds": SMS_CODE_TTL_SECONDS,
-        "retry_after": SMS_SEND_COOLDOWN_SECONDS,
-    }
-    if send_result.get("mock") and current_app.config.get("DEBUG"):
-        payload["debug_code"] = code
-
-    return jsonify(payload)
 
 @auth_bp.route("/register", methods=["POST"])
 def register():
     """注册新账户。Body: { phone_number, password }"""
-    data = request.get_json(silent=True) or {}
+    data = request.get_json()
     phone_number = (data.get("phone_number") or "").strip()
     password = data.get("password") or ""
-    sms_code = (data.get("sms_code") or "").strip()
-    sms_purpose = (data.get("sms_purpose") or "register").strip().lower()
 
     if not phone_number:
         return jsonify({"error": "手机号不能为空"}), 400
     if len(password) < 6:
         return jsonify({"error": "密码不能少于 6 位"}), 400
-    if not sms_code:
-        return jsonify({"error": "请先完成验证码校验"}), 400
-    if sms_purpose != "register":
-        return jsonify({"error": "验证码用途不合法"}), 400
-
-    passed, message = _verify_sms_code(phone_number, sms_purpose, sms_code)
-    if not passed:
-        return jsonify({"error": message}), 400
 
     db = get_db()
     try:
@@ -144,22 +48,12 @@ def register():
 @auth_bp.route("/login", methods=["POST"])
 def login():
     """登录。Body: { phone_number, password }"""
-    data = request.get_json(silent=True) or {}
+    data = request.get_json()
     phone_number = (data.get("phone_number") or "").strip()
     password = data.get("password") or ""
-    sms_code = (data.get("sms_code") or "").strip()
-    sms_purpose = (data.get("sms_purpose") or "login").strip().lower()
 
     if not phone_number or not password:
         return jsonify({"error": "手机号和密码不能为空"}), 400
-    if not sms_code:
-        return jsonify({"error": "请先完成验证码校验"}), 400
-    if sms_purpose != "login":
-        return jsonify({"error": "验证码用途不合法"}), 400
-
-    passed, message = _verify_sms_code(phone_number, sms_purpose, sms_code)
-    if not passed:
-        return jsonify({"error": message}), 400
 
     db = get_db()
     try:
