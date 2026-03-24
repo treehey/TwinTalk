@@ -427,11 +427,14 @@ export default function World({ setHideNav, showToast, onUnreadChange, pendingDm
       refreshConversations().catch(() => {})
       if (agentReply) {
         setTimeout(async () => {
-          try {
-            const later = await listDmMessages(conv.id)
-            setMessages(later.messages || [])
-            refreshConversations().catch(() => {})
-          } catch (_) {}
+            try {
+              const [later] = await Promise.all([
+                listDmMessages(conv.id),
+                markDmRead(conv.id).catch(() => {}),
+              ])
+              setMessages(later.messages || [])
+              refreshConversations().catch(() => {})
+            } catch (_) {}
         }, 3500)
       }
     } finally {
@@ -464,15 +467,18 @@ export default function World({ setHideNav, showToast, onUnreadChange, pendingDm
       let ticks = 0
       const poll = setInterval(async () => {
         ticks++
-        try {
-          const data = await listDmMessages(convId)
-          // We only update messages if we are still viewing the active conversation
-          setMessages(prev => {
-              // Because of closure we just use the functional update or ignore if we switched tabs.
-              return data.messages || []
-          })
-          refreshConversations(false).catch(() => {})
-        } catch(e) {}
+          try {
+            const [data] = await Promise.all([
+              listDmMessages(convId),
+              markDmRead(convId).catch(() => {}),
+            ])
+            // We only update messages if we are still viewing the active conversation
+            setMessages(prev => {
+                // Because of closure we just use the functional update or ignore if we switched tabs.
+                return data.messages || []
+            })
+            refreshConversations(false).catch(() => {})
+          } catch(e) {}
         
         if (ticks >= 20) { // 20 * 3s = 60s
            clearInterval(poll)

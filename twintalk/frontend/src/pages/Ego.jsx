@@ -49,7 +49,7 @@ function generateDynamicTraits(profile, hiddenTraits = []) {
   });
   const uniqueItems = Array.from(uniqueMap.values()).slice(0, 8);
 
-  if (uniqueItems.length === 0) return MOCK_TRAITS;
+  if (uniqueItems.length === 0) return [];
 
   return uniqueItems.map((item, index) => {
     const size = item.weight >= 3 ? 'large' : item.weight === 2 ? 'medium' : 'small';
@@ -88,8 +88,8 @@ function TraitCloud({ fitnessIndex, profile, hiddenTraits, onToggleSettings }) {
         </button>
       </div>
       
-      <div className="trait-canvas">
-        {activeTraits.map(t => (
+      <div className="trait-canvas" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        {activeTraits.length > 0 ? activeTraits.map(t => (
           <div
             key={t.text}
             className={`trait-bubble size-${t.size}`}
@@ -102,7 +102,12 @@ function TraitCloud({ fitnessIndex, profile, hiddenTraits, onToggleSettings }) {
           >
             {t.text}
           </div>
-        ))}
+        )) : (
+          <div style={{ textAlign: 'center', color: 'var(--c-text-secondary)', padding: '20px', maxWidth: '80%' }}>
+            <p style={{ fontSize: '15px', marginBottom: '8px' }}>✨ 你的 Ego Matrix 虚位以待</p>
+            <p style={{ fontSize: '13px', opacity: 0.8 }}>点击右上角设置图标，选择你想要展示的个性气泡，或者多跟 Agent 聊聊来发掘更多特质。</p>
+          </div>
+        )}
       </div>
 
       <div className="scroll-down-hint">

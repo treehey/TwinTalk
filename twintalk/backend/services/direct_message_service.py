@@ -417,9 +417,9 @@ class DirectMessageService:
             "partner": partner.to_dict() if partner else {"id": partner_id, "nickname": "未知用户"},
             "source_community": conv.source_community or "",
             "last_message": conv.last_message or "",
-            "last_message_at": conv.last_message_at.isoformat() if conv.last_message_at else None,
+            "last_message_at": conv.last_message_at.isoformat() + "Z" if conv.last_message_at else None,
             "unread_count": int(unread_count or 0),
-            "created_at": conv.created_at.isoformat() if conv.created_at else None,
+            "created_at": conv.created_at.isoformat() + "Z" if conv.created_at else None,
         }
 
     @staticmethod

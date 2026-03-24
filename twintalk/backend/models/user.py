@@ -59,7 +59,7 @@ class User(Base):
             "meta_data": self.meta_data or {},
             "profile_version": self.profile_version,
             "onboarding_completed": bool(self.onboarding_completed),
-            "last_login": self.last_login.isoformat() if self.last_login else None,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "last_login": self.last_login.isoformat() + "Z" if self.last_login else None,
+            "created_at": self.created_at.isoformat() + "Z" if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() + "Z" if self.updated_at else None,
         }
