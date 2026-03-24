@@ -5,6 +5,7 @@ import Social from './pages/Social'
 import World from './pages/World'
 import Ego from './pages/Ego'
 import Report from './pages/Report'
+import PostView from './pages/PostView'
 import { HomeIcon, MessageIcon, UserIcon, LogoutIcon, MagicActionIcon, ReportIcon } from './icons'
 
 /* ── Toast Component ── */
@@ -136,6 +137,9 @@ export default function App() {
         <div className={`page-container ${page === 'report' ? 'page-active' : 'page-hidden'}`}>
           <Report isActive={page === 'report'} />
         </div>
+        <div className={`page-container ${page === 'post' ? 'page-active' : 'page-hidden'}`}>
+          <PostView isActive={page === 'post'} showToast={showToast} />
+        </div>
       </main>
 
       {/* ── Left Drawer (Inbox) ── */}
@@ -156,9 +160,14 @@ export default function App() {
       <div className={`overlay-backdrop ${agentMenuOpen ? 'open' : ''}`} onClick={() => setAgentMenuOpen(false)} style={{ zIndex: 100 }} />
       
       <div className={`radial-menu-wrapper ${agentMenuOpen ? 'open' : ''}`}>
-        <button className="radial-item advisor" onClick={() => { showToast('Advisor (情感顾问) 功能即将上线'); setAgentMenuOpen(false); }}>
-          <div className="icon" style={{ color: '#10b981' }}>A</div>
-          <span>Advisor</span>
+        <button className="radial-item advisor" onClick={() => { setPage('post'); setAgentMenuOpen(false); }}>
+          <div className="icon" style={{ color: '#8b5cf6' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 20h9"/>
+              <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+            </svg>
+          </div>
+          <span>Post</span>
         </button>
         <button className="radial-item planner" onClick={() => { showToast('Planner (规划师) 功能即将上线'); setAgentMenuOpen(false); }}>
           <div className="icon" style={{ color: '#f59e0b' }}>P</div>
