@@ -110,20 +110,21 @@ class SocialService:
                 continue
 
             # Build profile tags like Ego page does
-            extra = profile.extra_info or {}
+            extra = candidate_profile.extra_info or {}
             profile_tags = []
             if extra.get('mbti'):
                 profile_tags.append(extra['mbti'])
             for kw in (extra.get('personality_keywords') or []):
                 profile_tags.append(kw)
-            for interest in (profile.interests or [])[:8]:
+            for interest in (candidate_profile.interests or [])[:8]:
                 profile_tags.append(interest)
-            vals = profile.values_profile or {}
+            vals = candidate_profile.values_profile or {}
             for v in (vals.get('核心价值') or [])[:3]:
                 profile_tags.append(v)
-            cstyle = profile.communication_style or {}
+            cstyle = candidate_profile.communication_style or {}
             if cstyle.get('风格'):
                 profile_tags.append(cstyle['风格'])
+            
             # Deduplicate and limit
             seen = set()
             unique_tags = []
@@ -133,39 +134,13 @@ class SocialService:
                     unique_tags.append(t)
             profile_tags = unique_tags[:12]
 
-            # Generate match reason
-            reasons = []
-            if common:
-                reasons.append(f"你们在{', '.join(common[:3])}等方面有共同兴趣")
-            if trait_score > 0.3:
-                reasons.append("性格特质高度相似")
-            if value_score > 0.3:
-                reasons.append("核心价值观接近")
-            if style_score > 0.3:
-                reasons.append("沟通风格相近")
-            if not reasons:
-                reasons.append("系统综合分析推荐")
-            match_reason = "，".join(reasons) + "。"
-
             matches.append({
-                "user": user.to_dict(),
-                "score": round(total_score, 4),
-                "common_count": len(common),
-                "bio_third_view": profile.bio_third_view or "",
-                "common_interests": common,
-                "profile_tags": profile_tags,
-                "match_reason": match_reason,
-                "score_breakdown": {
-                    "interest": round(interest_score, 4),
-                    "trait": round(trait_score, 4),
-                    "value": round(value_score, 4),
-                    "style": round(style_score, 4),
-                },
                 "user": candidate_user.to_dict(),
                 "score": r["final_score"],
                 "common_count": len(common_interests),
                 "bio_third_view": candidate_profile.bio_third_view or "",
                 "common_interests": common_interests,
+                "profile_tags": profile_tags,
                 "match_reason": r["match_reason"],
                 "score_breakdown": r["score_breakdown"],
             })
