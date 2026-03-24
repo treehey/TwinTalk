@@ -21,7 +21,7 @@ function SafeReportDetail({ report, onBack, onDelete }) {
     } else if (typeof report.summary === 'object') {
       summaryData = report.summary
     }
-  } catch(e) {
+  } catch (e) {
     console.warn('Failed to parse report summary:', e)
     summaryData = {}
   }
@@ -39,9 +39,9 @@ function SafeReportDetail({ report, onBack, onDelete }) {
         <button className="report-back-btn" onClick={onBack} style={{ marginBottom: 0 }}>
           <BackIcon /> 返回列表
         </button>
-        <button 
-          className="btn btn-ghost btn-sm" 
-          onClick={() => onDelete(report.id)} 
+        <button
+          className="btn btn-ghost btn-sm"
+          onClick={() => onDelete(report.id)}
           style={{ color: 'var(--c-danger)', display: 'flex', alignItems: 'center', gap: '4px' }}
         >
           <TrashIcon /> 删除
@@ -62,7 +62,13 @@ function SafeReportDetail({ report, onBack, onDelete }) {
           </span>
         </div>
         <div className="report-detail-time">
-          {report.created_at ? new Date(report.created_at).toLocaleString() : ''}
+          {report.created_at
+            ? new Intl.DateTimeFormat('zh-CN', {
+              timeZone: 'Asia/Shanghai',
+              year: 'numeric', month: '2-digit', day: '2-digit',
+              hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+            }).format(new Date(report.created_at))
+            : ''}
         </div>
       </div>
 
@@ -168,7 +174,7 @@ export default function Report({ isActive }) {
   const handleDelete = async (e, reportId) => {
     if (e) e.stopPropagation()
     if (!window.confirm("确定要删除这篇对话报告吗？")) return;
-    
+
     try {
       await deleteAgentReport(reportId)
       if (selectedReport && selectedReport.id === reportId) {
@@ -237,7 +243,7 @@ export default function Report({ isActive }) {
 
       {loading ? (
         <div className="report-loading">
-          <div className="loading-dots"><span/><span/><span/></div>
+          <div className="loading-dots"><span /><span /><span /></div>
           <p>加载报告中...</p>
         </div>
       ) : error ? (
@@ -250,7 +256,7 @@ export default function Report({ isActive }) {
         <div className="report-empty">
           <div className="report-empty-icon">📝</div>
           <h3>暂无报告</h3>
-          <p>在首页推荐用户卡片上点击「Agent对谈」，<br/>让两个 AI 孪生体自由聊天并生成分析报告！</p>
+          <p>在首页推荐用户卡片上点击「Agent对谈」，<br />让两个 AI 孪生体自由聊天并生成分析报告！</p>
         </div>
       ) : (
         <div className="report-list">
@@ -263,7 +269,7 @@ export default function Report({ isActive }) {
                   title = parsed.title || ''
                 }
               }
-            } catch(e) { /* ignore parse errors */ }
+            } catch (e) { /* ignore parse errors */ }
 
             return (
               <button key={report.id} className="report-list-card" onClick={() => setSelectedReport(report)}>
@@ -278,12 +284,18 @@ export default function Report({ isActive }) {
                   </div>
                   {title && <div className="report-list-card-subtitle">{title}</div>}
                   <div className="report-list-card-time">
-                    {report.created_at ? new Date(report.created_at).toLocaleString() : ''}
+                    {report.created_at
+                      ? new Intl.DateTimeFormat('zh-CN', {
+                        timeZone: 'Asia/Shanghai',
+                        year: 'numeric', month: '2-digit', day: '2-digit',
+                        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+                      }).format(new Date(report.created_at))
+                      : ''}
                   </div>
                 </div>
-                <button 
-                  className="btn btn-icon btn-sm" 
-                  onClick={(e) => handleDelete(e, report.id)} 
+                <button
+                  className="btn btn-icon btn-sm"
+                  onClick={(e) => handleDelete(e, report.id)}
                   title="删除报告"
                   style={{ color: 'var(--c-text-secondary)', zIndex: 2 }}
                 >
