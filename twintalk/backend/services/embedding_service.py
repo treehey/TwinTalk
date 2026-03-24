@@ -16,7 +16,9 @@ import numpy as np
 from sqlalchemy.orm import Session
 
 from models.profile import KeyMemory
-from services.llm_client import get_client, _get_api_key
+from services.llm_client import get_api_key_pool, get_client_for_key
+import queue
+import openai
 
 logger = logging.getLogger(__name__)
 
@@ -63,19 +65,33 @@ class EmbeddingService:
 
         Returns None when the API key is missing (offline mode).
         """
-        if not _get_api_key():
-            logger.warning("EmbeddingService: no API key, returning None")
+        pool = get_api_key_pool()
+        try:
+            key = pool.get(timeout=5.0)
+        except queue.Empty:
+            logger.warning("EmbeddingService: no API key available (busy/cooldown)")
+            return None
+            
+        if not key:
+            pool.put(key)
+            logger.warning("EmbeddingService: no API key (offline mode), returning None")
             return None
 
-        client = get_client()
+        client = get_client_for_key(key)
         try:
             response = client.embeddings.create(
                 model=EMBEDDING_MODEL,
                 input=text[:8000],  # truncate to stay within limits
             )
             vec = np.array(response.data[0].embedding, dtype=np.float32)
+            pool.put(key)
             return vec
+        except openai.RateLimitError:
+            pool.cooldown(key, cooldown_seconds=20)
+            logger.error("EmbeddingService.embed_text failed: RateLimitError")
+            return None
         except Exception as e:
+            pool.put(key)
             logger.error("EmbeddingService.embed_text failed: %s", e)
             return None
 
