@@ -279,7 +279,7 @@ function CalibrationPanel({ showToast, onSynced, onScoreChange }) {
       <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px', textAlign: 'center' }}>数据与记忆管理</h3>
       
       <div className="mobile-card" style={{ boxShadow: 'none', border: '1px solid var(--c-border)' }}>
-        <h4 style={{ fontSize: '14px', marginBottom: '8px' }}>手动录入记忆</h4>
+        <h4 style={{ fontSize: '14px', marginBottom: '8px' }}>📝 手动录入记忆</h4>
         <textarea
           className="form-textarea"
           rows={2}
@@ -311,7 +311,7 @@ function CalibrationPanel({ showToast, onSynced, onScoreChange }) {
       </div>
 
       <div className="mobile-card" style={{ boxShadow: 'none', border: '1px solid var(--c-border)', marginTop: '12px' }}>
-        <h4 style={{ fontSize: '14px', marginBottom: '8px' }}>同步私信记忆</h4>
+        <h4 style={{ fontSize: '14px', marginBottom: '8px' }}>💬 同步私信记忆</h4>
         <button
           className="btn btn-secondary btn-sm"
           style={{ width: '100%' }}

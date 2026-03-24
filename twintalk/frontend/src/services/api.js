@@ -47,36 +47,19 @@ async function request(path, options = {}) {
 }
 
 // ---- Auth ----
-export async function sendSmsCode(phone_number, purpose = 'login') {
-  return request('/auth/send-sms-code', {
-    method: 'POST',
-    body: JSON.stringify({ phone_number, purpose }),
-  });
-}
-
-export async function register(phone_number, password, sms = {}) {
+export async function register(phone_number, password) {
   const data = await request('/auth/register', {
     method: 'POST',
-    body: JSON.stringify({
-      phone_number,
-      password,
-      sms_code: sms.code,
-      sms_purpose: sms.purpose || 'register',
-    }),
+    body: JSON.stringify({ phone_number, password }),
   });
   setUserId(data.user.id);
   return data;
 }
 
-export async function login(phone_number, password, sms = {}) {
+export async function login(phone_number, password) {
   const data = await request('/auth/login', {
     method: 'POST',
-    body: JSON.stringify({
-      phone_number,
-      password,
-      sms_code: sms.code,
-      sms_purpose: sms.purpose || 'login',
-    }),
+    body: JSON.stringify({ phone_number, password }),
   });
   setUserId(data.user.id);
   return data;
