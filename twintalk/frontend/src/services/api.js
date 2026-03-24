@@ -1,6 +1,6 @@
 /** API service — communicates with Flask backend */
 
-const HOST = import.meta.env.VITE_API_HOST || '';
+const HOST = '';
 const API_BASE = `${HOST}/api`;
 
 function getUserId() {
