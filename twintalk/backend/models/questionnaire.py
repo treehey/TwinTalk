@@ -50,6 +50,8 @@ class Questionnaire(Base):
             "tags": self.tags or [],
             "meta_data": self.meta_data or {},
             "question_count": len(self.questions) if self.questions else 0,
+            "created_at": self.created_at.isoformat() + "Z" if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() + "Z" if self.updated_at else None,
         }
         if include_questions:
             result["questions"] = [q.to_dict() for q in self.questions]
@@ -152,6 +154,6 @@ class Answer(Base):
             "text_value": self.text_value,
             "choice_value": self.choice_value,
             "meta_data": self.meta_data or {},
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "created_at": self.created_at.isoformat() + "Z" if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() + "Z" if self.updated_at else None,
         }

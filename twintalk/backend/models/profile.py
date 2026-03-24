@@ -81,8 +81,8 @@ class UserProfile(Base):
             "shades": self.shades or [],
             "confidence_scores": self.confidence_scores or {},
             "meta_data": self.meta_data or {},
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "created_at": self.created_at.isoformat() + "Z" if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() + "Z" if self.updated_at else None,
         }
         if include_prompt:
             result["system_prompt_cache"] = self.system_prompt_cache
@@ -123,7 +123,7 @@ class ConversationMemory(Base):
             "token_count": self.token_count,
             "embedding_id": self.embedding_id,
             "context_metadata": self.context_metadata or {},
-            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "created_at": self.created_at.isoformat() + "Z" if self.created_at else None,
         }
 
 
@@ -157,6 +157,6 @@ class KeyMemory(Base):
             "tags": self.tags or [],
             "embedding_id": self.embedding_id,
             "meta_data": self.meta_data or {},
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "created_at": self.created_at.isoformat() + "Z" if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() + "Z" if self.updated_at else None,
         }

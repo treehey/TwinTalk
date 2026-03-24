@@ -59,73 +59,122 @@ class SocialService:
         return [r[0] for r in rows]
 
     def find_matches(self, user_id: str, limit: int = 10, refresh_token: str = "") -> list:
-        """Find twins using multi-dimension profile similarity."""
+        """Find twins using the two-stage hybrid matching algorithm (recall + LLM rerank).
+
+        Delegates to MatchService and converts MatchResult to the legacy response format
+        so existing API callers remain unaffected.
+        """
+        from services.match_service import MatchService
+
+        svc = MatchService(self.db)
+        # Retrieve more candidates than needed so refresh_token shuffle has room
+        fetch_limit = max(limit * 3, 20)
+        raw_results = svc.get_recommended_twins(user_id, top_n=fetch_limit)
+
+        if not raw_results:
+            return []
+
+        # Convert MatchResult dicts → legacy response format
+        matches = []
+        # Query current user's profile once (not inside the loop)
         my_profile = (
             self.db.query(UserProfile)
             .filter_by(user_id=user_id)
             .order_by(UserProfile.version.desc())
             .first()
         )
+        my_interests = (my_profile.interests or []) if my_profile else []
 
-        if not my_profile:
-            return []
-
-        my_interests = my_profile.interests or []
-
-        # Only keep latest profile per user.
-        candidate_users = self.db.query(User).filter(User.id != user_id).all()
-
-        matches = []
-        for user in candidate_users:
-            profile = (
+        for r in raw_results:
+            # Retrieve the candidate's profile for bio_third_view / common_interests
+            candidate_profile = (
                 self.db.query(UserProfile)
-                .filter_by(user_id=user.id)
+                .filter_by(user_id=r["candidate_id"])
                 .order_by(UserProfile.version.desc())
                 .first()
             )
-            if not profile:
+            candidate_user = (
+                self.db.query(User)
+                .filter_by(id=r["candidate_id"])
+                .first()
+            )
+            if not candidate_user or not candidate_profile:
                 continue
 
-            common = self._find_common(my_interests, profile.interests or [])
-            interest_score = self._jaccard(my_interests, profile.interests or [])
-            trait_score = self._dict_similarity(
-                my_profile.personality_traits or {},
-                profile.personality_traits or {},
-            )
-            value_score = self._dict_similarity(
-                my_profile.values_profile or {},
-                profile.values_profile or {},
-            )
-            style_score = self._style_similarity(
-                my_profile.communication_style or {},
-                profile.communication_style or {},
+            cand_interests = candidate_profile.interests or []
+            common_interests = list(
+                {str(i).strip().lower() for i in my_interests if str(i).strip()}
+                & {str(i).strip().lower() for i in cand_interests if str(i).strip()}
             )
 
-            total_score = (
-                0.45 * interest_score
-                + 0.25 * trait_score
-                + 0.20 * value_score
-                + 0.10 * style_score
-            )
+            # Build profile tags like Ego page does
+            extra = profile.extra_info or {}
+            profile_tags = []
+            if extra.get('mbti'):
+                profile_tags.append(extra['mbti'])
+            for kw in (extra.get('personality_keywords') or []):
+                profile_tags.append(kw)
+            for interest in (profile.interests or [])[:8]:
+                profile_tags.append(interest)
+            vals = profile.values_profile or {}
+            for v in (vals.get('核心价值') or [])[:3]:
+                profile_tags.append(v)
+            cstyle = profile.communication_style or {}
+            if cstyle.get('风格'):
+                profile_tags.append(cstyle['风格'])
+            # Deduplicate and limit
+            seen = set()
+            unique_tags = []
+            for t in profile_tags:
+                if t not in seen:
+                    seen.add(t)
+                    unique_tags.append(t)
+            profile_tags = unique_tags[:12]
+
+            # Generate match reason
+            reasons = []
+            if common:
+                reasons.append(f"你们在{', '.join(common[:3])}等方面有共同兴趣")
+            if trait_score > 0.3:
+                reasons.append("性格特质高度相似")
+            if value_score > 0.3:
+                reasons.append("核心价值观接近")
+            if style_score > 0.3:
+                reasons.append("沟通风格相近")
+            if not reasons:
+                reasons.append("系统综合分析推荐")
+            match_reason = "，".join(reasons) + "。"
 
             matches.append({
+<<<<<<< HEAD
                 "user": user.to_dict(),
                 "score": round(total_score, 4),
                 "common_count": len(common),
                 "bio_third_view": profile.bio_third_view or "",
                 "common_interests": common,
+                "profile_tags": profile_tags,
+                "match_reason": match_reason,
                 "score_breakdown": {
                     "interest": round(interest_score, 4),
                     "trait": round(trait_score, 4),
                     "value": round(value_score, 4),
                     "style": round(style_score, 4),
                 },
+=======
+                "user": candidate_user.to_dict(),
+                "score": r["final_score"],
+                "common_count": len(common_interests),
+                "bio_third_view": candidate_profile.bio_third_view or "",
+                "common_interests": common_interests,
+                "match_reason": r["match_reason"],
+                "score_breakdown": r["score_breakdown"],
+>>>>>>> 4d78eb501c90ac794285c724a555767a25dce5c4
             })
 
-        matches.sort(key=lambda x: (x["score"], x["common_count"]), reverse=True)
+        # Optional: shuffle with refresh_token for diversity
         if refresh_token:
-            top = matches[: max(limit * 3, limit)]
             seed_int = int(hashlib.sha256(refresh_token.encode("utf-8")).hexdigest()[:8], 16)
+            top = matches[: max(limit * 3, limit)]
             random.Random(seed_int).shuffle(top)
             top.sort(key=lambda x: x["score"], reverse=True)
             head = top[: max(limit // 2, 1)]
@@ -141,51 +190,3 @@ class SocialService:
             .filter_by(follower_id=follower_id, following_id=following_id, status="accepted")
             .first()
         ) is not None
-
-    @staticmethod
-    def _find_common(a: list, b: list) -> list:
-        """Find common elements between two lists."""
-        return list(set(a) & set(b))
-
-    @staticmethod
-    def _jaccard(a: list, b: list) -> float:
-        a_set = {str(item).strip().lower() for item in (a or []) if str(item).strip()}
-        b_set = {str(item).strip().lower() for item in (b or []) if str(item).strip()}
-        if not a_set and not b_set:
-            return 0.0
-        inter = len(a_set & b_set)
-        union = len(a_set | b_set)
-        return float(inter) / float(union or 1)
-
-    @staticmethod
-    def _dict_similarity(a: dict, b: dict) -> float:
-        if not a or not b:
-            return 0.0
-        keys = set(a.keys()) & set(b.keys())
-        if not keys:
-            return 0.0
-
-        diffs = []
-        for k in keys:
-            try:
-                av = float(a.get(k, 0.0))
-                bv = float(b.get(k, 0.0))
-                diffs.append(min(abs(av - bv), 1.0))
-            except (TypeError, ValueError):
-                continue
-
-        if not diffs:
-            return 0.0
-        return max(0.0, 1.0 - (sum(diffs) / len(diffs)))
-
-    @staticmethod
-    def _style_similarity(a: dict, b: dict) -> float:
-        if not a or not b:
-            return 0.0
-        a_tokens = set(str(v).strip().lower() for v in a.values() if str(v).strip())
-        b_tokens = set(str(v).strip().lower() for v in b.values() if str(v).strip())
-        if not a_tokens or not b_tokens:
-            return 0.0
-        inter = len(a_tokens & b_tokens)
-        union = len(a_tokens | b_tokens)
-        return float(inter) / float(union or 1)

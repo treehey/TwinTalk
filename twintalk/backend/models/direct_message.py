@@ -38,6 +38,24 @@ class DirectMessageConversation(Base):
         order_by="DirectMessage.created_at.asc()",
     )
 
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "participant_a_id": self.participant_a_id,
+            "participant_b_id": self.participant_b_id,
+            "source_community": self.source_community,
+            "last_message": self.last_message,
+            "last_message_at": self.last_message_at.isoformat() + "Z" if self.last_message_at else None,
+            "is_pinned_a": self.is_pinned_a,
+            "is_pinned_b": self.is_pinned_b,
+            "is_archived_a": self.is_archived_a,
+            "is_archived_b": self.is_archived_b,
+            "blocked_by_id": self.blocked_by_id,
+            "meta_data": self.meta_data or {},
+            "created_at": self.created_at.isoformat() + "Z" if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() + "Z" if self.updated_at else None,
+        }
+
 
 class DirectMessage(Base):
     """A single direct message within a conversation."""
@@ -77,6 +95,6 @@ class DirectMessage(Base):
             "content_type": self.content_type,
             "content": self.content,
             "meta_data": self.meta_data or {},
-            "read_at": self.read_at.isoformat() if self.read_at else None,
-            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "read_at": self.read_at.isoformat() + "Z" if self.read_at else None,
+            "created_at": self.created_at.isoformat() + "Z" if self.created_at else None,
         }

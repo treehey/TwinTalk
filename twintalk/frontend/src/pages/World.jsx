@@ -17,11 +17,34 @@ function formatTime(iso) {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
   const now = new Date()
-  const diffMs = now - d
+  
+  // Convert current date to Beijing time string
+  const nowStr = now.toLocaleString("en-US", { timeZone: "Asia/Shanghai" })
+  const dStr = d.toLocaleString("en-US", { timeZone: "Asia/Shanghai" })
+  
+  const nowBeijing = new Date(nowStr)
+  const dBeijing = new Date(dStr)
+
+  const diffMs = nowBeijing - dBeijing
   if (diffMs < 60000) return '刚刚'
   if (diffMs < 3600000) return `${Math.floor(diffMs / 60000)}分钟前`
-  if (diffMs < 86400000) return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-  return `${d.getMonth() + 1}/${d.getDate()}`
+  
+  const isSameDay = 
+    nowBeijing.getFullYear() === dBeijing.getFullYear() && 
+    nowBeijing.getMonth() === dBeijing.getMonth() && 
+    nowBeijing.getDate() === dBeijing.getDate()
+  
+  if (isSameDay) {
+    return new Intl.DateTimeFormat('zh-CN', {
+      timeZone: 'Asia/Shanghai',
+      hour: '2-digit', minute: '2-digit', hour12: false
+    }).format(d)
+  }
+  
+  return new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    month: '2-digit', day: '2-digit'
+  }).format(d)
 }
 
 function getAvatarLabel(name) {
@@ -369,10 +392,10 @@ export default function World({ setHideNav, showToast, onUnreadChange, pendingDm
 
   // Refresh conversations when drawer opens so data is never stale
   useEffect(() => {
-    if (isActive) {
+    if (isActive && !pendingDmTargetId) {
       refreshConversations(false).catch(console.error)
     }
-  }, [isActive])
+  }, [isActive, pendingDmTargetId])
 
   const openConversation = async (conv) => {
     setCurrentConversation(conv)
@@ -427,11 +450,14 @@ export default function World({ setHideNav, showToast, onUnreadChange, pendingDm
       refreshConversations().catch(() => {})
       if (agentReply) {
         setTimeout(async () => {
-          try {
-            const later = await listDmMessages(conv.id)
-            setMessages(later.messages || [])
-            refreshConversations().catch(() => {})
-          } catch (_) {}
+            try {
+              const [later] = await Promise.all([
+                listDmMessages(conv.id),
+                markDmRead(conv.id).catch(() => {}),
+              ])
+              setMessages(later.messages || [])
+              refreshConversations().catch(() => {})
+            } catch (_) {}
         }, 3500)
       }
     } finally {
@@ -464,15 +490,18 @@ export default function World({ setHideNav, showToast, onUnreadChange, pendingDm
       let ticks = 0
       const poll = setInterval(async () => {
         ticks++
-        try {
-          const data = await listDmMessages(convId)
-          // We only update messages if we are still viewing the active conversation
-          setMessages(prev => {
-              // Because of closure we just use the functional update or ignore if we switched tabs.
-              return data.messages || []
-          })
-          refreshConversations(false).catch(() => {})
-        } catch(e) {}
+          try {
+            const [data] = await Promise.all([
+              listDmMessages(convId),
+              markDmRead(convId).catch(() => {}),
+            ])
+            // We only update messages if we are still viewing the active conversation
+            setMessages(prev => {
+                // Because of closure we just use the functional update or ignore if we switched tabs.
+                return data.messages || []
+            })
+            refreshConversations(false).catch(() => {})
+          } catch(e) {}
         
         if (ticks >= 20) { // 20 * 3s = 60s
            clearInterval(poll)

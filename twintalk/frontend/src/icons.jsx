@@ -1,12 +1,12 @@
 export const HomeIcon = ({ active }) => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.5} strokeLinecap="round" strokeLinejoin="round">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
     <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
     <polyline points="9 22 9 12 15 12 15 22" />
   </svg>
 )
 
 export const UserIcon = ({ active }) => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.5} strokeLinecap="round" strokeLinejoin="round">
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
     <circle cx="12" cy="7" r="4" />
   </svg>
@@ -120,22 +120,8 @@ export const HeartIcon = ({ active }) => (
 )
 
 export const MagicActionIcon = () => (
-  <div className="nav-action-btn">
-    <img 
-      src="/logo.png" 
-      alt="TwinTalk Logo" 
-      style={{ 
-        width: '100%', 
-        height: '100%', 
-        objectFit: 'contain', 
-        borderRadius: '50%' 
-      }} 
-      onError={(e) => {
-        // Fallback styling if image is missing
-        e.target.style.display = 'none';
-        e.target.parentElement.innerHTML = '<span style="color:#F4C414; font-weight:800; font-size:24px;">TT</span>';
-      }}
-    />
+  <div className="nav-action-btn" style={{ padding: 0, overflow: 'hidden', border: 'none', background: 'transparent' }}>
+    <img src="/tt_logo.jpg" alt="TwinTalk" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', transform: 'scale(1.35)' }} />
   </div>
 )
 

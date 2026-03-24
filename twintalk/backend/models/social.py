@@ -41,8 +41,8 @@ class TwinConnection(Base):
             "affinity_score": self.affinity_score,
             "interaction_frequency": self.interaction_frequency,
             "meta_data": self.meta_data or {},
-            "created_at": self.created_at.isoformat() if self.created_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "created_at": self.created_at.isoformat() + "Z" if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() + "Z" if self.updated_at else None,
         }
 
 
@@ -73,9 +73,9 @@ class CommunityMembership(Base):
             "role": self.role,
             "reputation_score": self.reputation_score,
             "preferences": self.preferences or {},
-            "last_active_at": self.last_active_at.isoformat() if self.last_active_at else None,
-            "joined_at": self.joined_at.isoformat() if self.joined_at else None,
-            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+            "last_active_at": self.last_active_at.isoformat() + "Z" if self.last_active_at else None,
+            "joined_at": self.joined_at.isoformat() + "Z" if self.joined_at else None,
+            "updated_at": self.updated_at.isoformat() + "Z" if self.updated_at else None,
         }
 
 
@@ -114,5 +114,5 @@ class TwinInteraction(Base):
             "interaction_summary": self.interaction_summary,
             "impact_score": self.impact_score,
             "meta_data": self.meta_data or {},
-            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "created_at": self.created_at.isoformat() + "Z" if self.created_at else None,
         }

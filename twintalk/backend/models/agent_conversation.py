@@ -35,7 +35,7 @@ class AgentConversationReport(Base):
             "conversation_id": self.conversation_id,
             "summary": self.summary,
             "meta_data": self.meta_data or {},
-            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "created_at": self.created_at.isoformat() + "Z" if self.created_at else None,
             "owner_nickname": self.owner.nickname if self.owner else None,
             "partner_nickname": self.partner.nickname if self.partner else None,
         }

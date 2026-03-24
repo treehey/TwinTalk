@@ -11,7 +11,7 @@ _SessionLocal = None
 def init_db(database_url: str):
     """Initialize the database engine and create tables."""
     global _engine, _SessionLocal
-    _engine = create_engine(database_url, echo=False)
+    _engine = create_engine(database_url, echo=False, pool_pre_ping=True, pool_recycle=1800)
     _SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
     Base.metadata.create_all(bind=_engine)
 

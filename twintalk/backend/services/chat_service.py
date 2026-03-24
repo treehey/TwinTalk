@@ -133,8 +133,8 @@ class ChatService:
             )
             result.append({
                 "session_id": s.session_id,
-                "started_at": s.started_at.isoformat() if s.started_at else None,
-                "last_message_at": s.last_message_at.isoformat() if s.last_message_at else None,
+                "started_at": s.started_at.isoformat() + "Z" if s.started_at else None,
+                "last_message_at": s.last_message_at.isoformat() + "Z" if s.last_message_at else None,
                 "message_count": s.message_count,
                 "preview": first_msg.content[:100] if first_msg else "",
             })
