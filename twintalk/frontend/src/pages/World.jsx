@@ -17,11 +17,34 @@ function formatTime(iso) {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
   const now = new Date()
-  const diffMs = now - d
+  
+  // Convert current date to Beijing time string
+  const nowStr = now.toLocaleString("en-US", { timeZone: "Asia/Shanghai" })
+  const dStr = d.toLocaleString("en-US", { timeZone: "Asia/Shanghai" })
+  
+  const nowBeijing = new Date(nowStr)
+  const dBeijing = new Date(dStr)
+
+  const diffMs = nowBeijing - dBeijing
   if (diffMs < 60000) return '刚刚'
   if (diffMs < 3600000) return `${Math.floor(diffMs / 60000)}分钟前`
-  if (diffMs < 86400000) return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-  return `${d.getMonth() + 1}/${d.getDate()}`
+  
+  const isSameDay = 
+    nowBeijing.getFullYear() === dBeijing.getFullYear() && 
+    nowBeijing.getMonth() === dBeijing.getMonth() && 
+    nowBeijing.getDate() === dBeijing.getDate()
+  
+  if (isSameDay) {
+    return new Intl.DateTimeFormat('zh-CN', {
+      timeZone: 'Asia/Shanghai',
+      hour: '2-digit', minute: '2-digit', hour12: false
+    }).format(d)
+  }
+  
+  return new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    month: '2-digit', day: '2-digit'
+  }).format(d)
 }
 
 function getAvatarLabel(name) {
