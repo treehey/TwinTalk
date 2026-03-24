@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from sqlalchemy import (
     Column, String, Integer, DateTime, Text, JSON,
-    Enum, ForeignKey, Float
+    Enum, ForeignKey, Float, LargeBinary
 )
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -107,6 +107,7 @@ class ConversationMemory(Base):
     token_count = Column(Integer, default=0, comment="占用的 Token 数量(可选)")
     embedding_id = Column(String(100), nullable=True, comment="对应向量数据库中的向量ID(若有)")
     context_metadata = Column(JSON, default=dict, comment="其他上下文元数据(设备、地理位置等)")
+    session_summary = Column(Text, default="", comment="LLM 生成的该会话摘要")
     
     created_at = Column(DateTime, server_default=func.now())
 
@@ -140,6 +141,7 @@ class KeyMemory(Base):
     importance_score = Column(Float, default=0.5, comment="记忆的重要性权重 0-1")
     tags = Column(JSON, default=list, comment="记忆标签(如 '情感', '经历')")
     embedding_id = Column(String(100), nullable=True, comment="对应向量数据库的向量 ID")
+    embedding = Column(LargeBinary, nullable=True, comment="本地存储的文本向量嵌入 (numpy bytes)")
     meta_data = Column(JSON, default=dict, comment="时空或其他附加背景信息")
 
     created_at = Column(DateTime, server_default=func.now())

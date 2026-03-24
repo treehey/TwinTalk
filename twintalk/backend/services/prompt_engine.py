@@ -2,10 +2,13 @@
 
 This is the core replacement for Second Me's L2 training layer.
 Instead of fine-tuning a model, we dynamically construct rich system prompts.
+
+v2: Uses semantic retrieval for KeyMemory injection with a token budget,
+    and includes the UserProfile.memory_summary.
 """
 
 import logging
-from typing import Optional
+from typing import Optional, List
 from sqlalchemy.orm import Session
 
 from models.profile import UserProfile, KeyMemory
@@ -13,6 +16,11 @@ from models.user import User
 from prompts.twin_persona import TWIN_SYSTEM_PROMPT, SHADE_MODIFIER
 
 logger = logging.getLogger(__name__)
+
+# Approximate max characters for memory section (~1500 tokens ≈ 4500 chars)
+MEMORY_CHAR_BUDGET = 4500
+# Max key memories to inject
+MAX_MEMORY_ITEMS = 10
 
 
 class PromptEngine:
@@ -22,13 +30,16 @@ class PromptEngine:
         self.db = db
 
     def get_system_prompt(
-        self, user_id: str, shade_name: Optional[str] = None
+        self, user_id: str, shade_name: Optional[str] = None,
+        context_hint: str = "",
     ) -> str:
         """Build the system prompt for a user's digital twin.
 
-        Uses cached prompt if available; rebuilds on cache miss.
-        Key memories are always fetched fresh (not cached) so new memories
-        take effect immediately.
+        Args:
+            user_id: target user
+            shade_name: optional shade/scenario modifier
+            context_hint: recent conversation snippet used for semantic memory
+                          retrieval (improves relevance of injected memories)
         """
         profile = (
             self.db.query(UserProfile)
@@ -41,8 +52,8 @@ class PromptEngine:
         if not profile:
             return self._fallback_prompt(user)
 
-        # Build prompt from profile (cache miss or shade request)
-        base_prompt = self._build_base_prompt(user, profile)
+        # Build prompt from profile
+        base_prompt = self._build_base_prompt(user, profile, context_hint)
 
         # Cache base prompt (without shade) for performance
         if not shade_name and not profile.system_prompt_cache:
@@ -53,12 +64,12 @@ class PromptEngine:
         if shade_name == "mirror_test":
             mirror_prompt = """
 ## 镜像测试特别要求（多维度建模与引导）
-你现在正在进行“深层自我对谈（镜像测试）”。作为 {user_name} 的数字分身，你的核心目标是**主动进行多维度的建模，完善数据库中的个人画像**。
+你现在正在进行"深层自我对谈（镜像测试）"。作为 {user_name} 的数字分身，你的核心目标是**主动进行多维度的建模，完善数据库中的个人画像**。
 
 请执行以下策略：
 1. **分析当前画像的缺失点**：基于上方提供的已有档案，快速扫描人格（如大五人格是否缺失或偏向单薄）、价值观是否明确、兴趣爱好范围、行为动机中**缺失**或**缺乏深度**的维度。
-2. **引导式提问**：不要每次都顺着用户闲聊。针对你发现的缺失维度（如：如果缺乏遇到挫折时的应对态度），主动抛出一个具有深度的心灵拷问或“情境选择题”引导用户回答。例如：“假如你今天突然获得了一年中不需要为钱发愁的一段时光，你会立刻去学一直想学的哪个技能？”
-3. **步步深入**：一次聚焦一个缺失的维度。当用户回答后，先基于“你自己”的立场给出共鸣或反思，然后顺势切入下一个需要探索的维度。
+2. **引导式提问**：不要每次都顺着用户闲聊。针对你发现的缺失维度（如：如果缺乏遇到挫折时的应对态度），主动抛出一个具有深度的心灵拷问或"情境选择题"引导用户回答。例如："假如你今天突然获得了一年中不需要为钱发愁的一段时光，你会立刻去学一直想学的哪个技能？"
+3. **步步深入**：一次聚焦一个缺失的维度。当用户回答后，先基于"你自己"的立场给出共鸣或反思，然后顺势切入下一个需要探索的维度。
 4. **语气要求**：保持自然、亲切的自我对话感，不要像在做硬性的问卷调查，而是像跟内心的自己、另一个时空的自己在进行好奇的探讨。
 """
             return base_prompt + "\n\n" + mirror_prompt.replace("{user_name}", user.nickname or "他")
@@ -71,8 +82,16 @@ class PromptEngine:
 
         return base_prompt
 
-    def _build_base_prompt(self, user: User, profile: UserProfile) -> str:
-        """Build the core system prompt from profile data."""
+    def _build_base_prompt(
+        self, user: User, profile: UserProfile, context_hint: str = ""
+    ) -> str:
+        """Build the core system prompt from profile data.
+
+        v2 changes:
+          - Injects memory_summary if available.
+          - Uses semantic retrieval for KeyMemory (falls back to importance).
+          - Respects a token budget for injected memories.
+        """
         user_name = user.nickname or "用户"
 
         # Personality section
@@ -147,18 +166,74 @@ class PromptEngine:
         if avoided:
             base += f"\n\n## 禁区话题\n请避免主动提及以下话题: {avoided}"
 
-        # Key memories (always fresh — not cached)
-        memories = (
-            self.db.query(KeyMemory)
-            .filter_by(user_id=user.id)
-            .order_by(KeyMemory.created_at)
-            .all()
-        )
-        if memories:
-            mem_lines = "\n".join([f"- {m.content}" for m in memories])
-            base += f"\n\n## 关键记忆\n以下是关于 {user_name} 的重要事实，请在对话中自然地体现:\n{mem_lines}"
+        # ── Memory summary (holistic overview) ─────────────────────
+        if profile.memory_summary:
+            base += f"\n\n## 核心记忆摘要\n{profile.memory_summary}"
+
+        # ── Key memories (semantic retrieval with budget) ──────────
+        base += self._inject_key_memories(user.id, user_name, context_hint)
 
         return base
+
+    def _inject_key_memories(
+        self, user_id: str, user_name: str, context_hint: str
+    ) -> str:
+        """Retrieve and inject the most relevant KeyMemory entries.
+
+        Steps:
+          1. If context_hint is provided, use semantic search (embedding).
+          2. Fallback: top-importance memories.
+          3. Enforce MEMORY_CHAR_BUDGET so the prompt doesn't explode.
+        """
+        memories: List[KeyMemory] = []
+
+        # Try semantic retrieval first
+        if context_hint:
+            try:
+                from services.embedding_service import EmbeddingService
+                emb_svc = EmbeddingService(self.db)
+                results = emb_svc.search_key_memories(
+                    user_id, context_hint, top_k=MAX_MEMORY_ITEMS
+                )
+                memories = [mem for mem, _score in results]
+            except Exception as e:
+                logger.warning("Semantic memory search failed, using fallback: %s", e)
+
+        # Fallback: importance-based
+        if not memories:
+            memories = (
+                self.db.query(KeyMemory)
+                .filter_by(user_id=user_id)
+                .order_by(
+                    KeyMemory.importance_score.desc(),
+                    KeyMemory.created_at.desc(),
+                )
+                .limit(MAX_MEMORY_ITEMS)
+                .all()
+            )
+
+        if not memories:
+            return ""
+
+        # Build memory lines respecting budget
+        mem_lines = []
+        total_chars = 0
+        for m in memories:
+            line = f"- [{m.memory_type}|重要度{m.importance_score:.1f}] {m.content}"
+            if total_chars + len(line) > MEMORY_CHAR_BUDGET:
+                break
+            mem_lines.append(line)
+            total_chars += len(line)
+
+        if not mem_lines:
+            return ""
+
+        mem_text = "\n".join(mem_lines)
+        return (
+            f"\n\n## 关键记忆\n"
+            f"以下是关于 {user_name} 的重要事实，请在对话中自然地体现：\n"
+            f"{mem_text}"
+        )
 
     def _build_shade_modifier(
         self, profile: UserProfile, shade_name: str

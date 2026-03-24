@@ -11,6 +11,7 @@ sqlalchemy==2.0.36
 # Runtime: LLM / AI
 openai==1.66.3
 tencentcloud-sdk-python-hunyuan
+numpy>=1.24.0
 
 # Runtime: Utilities
 bleach==6.3.0

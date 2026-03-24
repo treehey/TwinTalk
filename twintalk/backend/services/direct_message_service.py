@@ -334,7 +334,12 @@ class DirectMessageService:
         )
         return {"sent_messages_week": int(sent_messages_week or 0)}
 
-    def sync_dm_to_memories(self, user_id: str, limit: int = 20) -> dict:
+    def sync_dm_to_memories(self, user_id: str, limit: int = 30) -> dict:
+        """Sync DM history into KeyMemory with LLM refinement and dedup.
+
+        Instead of blindly copying raw messages, aggregates recent DMs,
+        asks the LLM to extract key facts, and saves via KeyMemoryService.
+        """
         rows = (
             self.db.query(DirectMessage)
             .filter_by(sender_id=user_id)
@@ -346,22 +351,69 @@ class DirectMessageService:
         if not rows:
             return {"synced": 0}
 
-        synced = 0
+        # Aggregate DM content for LLM refinement
+        dm_texts = []
         for msg in rows:
             text = (msg.content or "").strip()
-            if not text:
-                continue
-            self.db.add(
-                KeyMemory(
-                    id=str(uuid.uuid4()),
-                    user_id=user_id,
-                    content=f"[私信同步] {text[:300]}",
-                    memory_type="chat_extracted",
-                )
-            )
-            synced += 1
+            if text:
+                dm_texts.append(text)
 
-        self.db.commit()
+        if not dm_texts:
+            return {"synced": 0}
+
+        # Use LLM to extract key facts from DMs
+        combined = "\n".join(dm_texts[:20])  # cap for token limits
+        try:
+            from services.llm_client import call_llm_json
+
+            extract_prompt = f"""请从以下用户私信内容中提取 1-5 条关键个人信息、偏好或重要事实。
+每条应简明扼要（一句话），只保留有意义的内容，忽略日常寒暄。
+
+## 私信内容
+{combined}
+
+请以 JSON 格式输出：
+{{
+    "memories": ["关键事实1", "关键事实2"]
+}}
+如果没有有价值的信息，输出 {{"memories": []}}。"""
+
+            result = call_llm_json(extract_prompt)
+            memory_texts = (result or {}).get("memories", [])
+        except Exception:
+            # Fallback: just take first 5 messages
+            memory_texts = [f"[私信] {t[:200]}" for t in dm_texts[:5]]
+
+        # Save via KeyMemoryService (with dedup)
+        synced = 0
+        try:
+            from services.key_memory_service import KeyMemoryService
+            km_svc = KeyMemoryService(self.db)
+            for text in memory_texts:
+                if text.strip():
+                    km_svc.add_memory(
+                        user_id=user_id,
+                        content=text.strip(),
+                        memory_type="chat_extracted",
+                        importance=0.5,
+                        tags=["dm_sync"],
+                    )
+                    synced += 1
+        except Exception:
+            # Fallback: direct insert
+            for text in memory_texts:
+                if text.strip():
+                    self.db.add(
+                        KeyMemory(
+                            id=str(uuid.uuid4()),
+                            user_id=user_id,
+                            content=f"[私信同步] {text.strip()[:300]}",
+                            memory_type="chat_extracted",
+                        )
+                    )
+                    synced += 1
+            self.db.commit()
+
         return {"synced": synced}
 
     def get_common_communities(self, user_id: str, other_user_id: str) -> list:

@@ -312,7 +312,8 @@ def sync_dm_memory():
     db = get_db()
     try:
         service = DirectMessageService(db)
-        synced_count = service.sync_dm_history_to_memory(current_user_id)
+        result = service.sync_dm_to_memories(current_user_id)
+        synced_count = result.get("synced", 0) if isinstance(result, dict) else 0
         return jsonify({"success": True, "synced": synced_count})
     except Exception as e:
         return jsonify({"error": str(e)}), 400

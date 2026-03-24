@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { getDmStats, getMyProfile, sendMessage, addMemory, getAlignmentQuestions, submitAlignmentAnswers, syncDmMemory, getMirrorGreeting } from '../services/api'
+import { getDmStats, getMyProfile, sendMessage, addMemory, getAlignmentQuestions, submitAlignmentAnswers, syncDmMemory, getMirrorGreeting, listMemories, deleteMemory, editMemory } from '../services/api'
 import { SendIcon } from '../icons'
 
 /* ── MOCK TRAITS FOR VISUAL CLOUD (Fallback) ── */
@@ -85,6 +85,25 @@ function TraitCloud({ fitnessIndex, profile }) {
         </div>
       </div>
       
+      {/* Memory Summary */}
+      {profile?.memory_summary && (
+        <div style={{
+          margin: '12px 16px 0',
+          padding: '10px 14px',
+          background: 'rgba(157,133,255,0.08)',
+          borderRadius: '10px',
+          fontSize: '12px',
+          lineHeight: '1.6',
+          color: 'var(--c-text-secondary)',
+        }}>
+          <span style={{ fontWeight: 600, color: 'var(--c-text-primary)', marginRight: '6px' }}>📝 记忆摘要</span>
+          {profile.memory_summary.length > 120
+            ? profile.memory_summary.slice(0, 120) + '...'
+            : profile.memory_summary
+          }
+        </div>
+      )}
+
       <div className="trait-canvas" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         {activeTraits.length > 0 ? activeTraits.map(t => (
           <div
@@ -265,19 +284,138 @@ function MirrorChat({ setHideNav, onChatUpdate }) {
   )
 }
 
+/* ── MemoryList — view, edit, delete existing memories ── */
+function MemoryList({ memories, onRefresh, showToast }) {
+  const [editingId, setEditingId] = useState(null)
+  const [editText, setEditText] = useState('')
+  const [deleting, setDeleting] = useState(null)
+
+  const handleDelete = async (id) => {
+    setDeleting(id)
+    try {
+      await deleteMemory(id)
+      showToast?.('✅ 记忆已删除')
+      onRefresh()
+    } catch (err) {
+      showToast?.(err.message)
+    } finally {
+      setDeleting(null)
+    }
+  }
+
+  const handleSaveEdit = async (id) => {
+    if (!editText.trim()) return
+    try {
+      await editMemory(id, { content: editText.trim() })
+      showToast?.('✅ 记忆已更新')
+      setEditingId(null)
+      setEditText('')
+      onRefresh()
+    } catch (err) {
+      showToast?.(err.message)
+    }
+  }
+
+  const typeLabel = (t) => {
+    const map = { user_added: '手动', system_extracted: '系统', chat_extracted: '对话', platform_generated: '平台' }
+    return map[t] || t
+  }
+
+  if (!memories || memories.length === 0) {
+    return (
+      <div style={{ textAlign: 'center', color: 'var(--c-text-secondary)', padding: '20px', fontSize: '13px' }}>
+        暂无记忆条目，试试与 Agent 对话或手动录入。
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      {memories.map(m => (
+        <div key={m.id} style={{
+          padding: '10px 12px',
+          borderRadius: '8px',
+          background: 'var(--c-card-bg, #fff)',
+          border: '1px solid var(--c-border)',
+          fontSize: '13px',
+        }}>
+          {editingId === m.id ? (
+            <div>
+              <textarea
+                className="form-textarea"
+                rows={2}
+                value={editText}
+                onChange={e => setEditText(e.target.value)}
+                style={{ marginBottom: '8px', fontSize: '13px' }}
+              />
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={() => handleSaveEdit(m.id)}>保存</button>
+                <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={() => setEditingId(null)}>取消</button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                <div style={{ flex: 1, lineHeight: '1.5', wordBreak: 'break-word' }}>{m.content}</div>
+                <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                  <button
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: '2px' }}
+                    title="编辑"
+                    onClick={() => { setEditingId(m.id); setEditText(m.content) }}
+                  >✏️</button>
+                  <button
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', padding: '2px', opacity: deleting === m.id ? 0.4 : 1 }}
+                    title="删除"
+                    disabled={deleting === m.id}
+                    onClick={() => handleDelete(m.id)}
+                  >🗑️</button>
+                </div>
+              </div>
+              <div style={{ marginTop: '4px', display: 'flex', gap: '8px', fontSize: '11px', color: 'var(--c-text-secondary)' }}>
+                <span style={{ background: 'rgba(157,133,255,0.12)', borderRadius: '4px', padding: '1px 6px' }}>{typeLabel(m.memory_type)}</span>
+                <span>重要度 {(m.importance_score || 0.5).toFixed(1)}</span>
+                {m.tags?.length > 0 && <span>{m.tags.join(', ')}</span>}
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 /* ── CalibrationPanel (Section 3 - Settings/Alignment) ─ */
 function CalibrationPanel({ showToast, onSynced, onScoreChange }) {
   const [syncing, setSyncing] = useState(false)
   const [memoryInput, setMemoryInput] = useState('')
   const [syncingDm, setSyncingDm] = useState(false)
+  const [memories, setMemories] = useState([])
+  const [loadingMem, setLoadingMem] = useState(false)
+  const [showMemories, setShowMemories] = useState(false)
 
-  // Only keeping the memory sync blocks to save space and keep it clean, 
-  // alignment questions can be loaded similarly if needed.
+  const loadMemories = async () => {
+    setLoadingMem(true)
+    try {
+      const res = await listMemories()
+      setMemories(res.memories || [])
+    } catch (_) {}
+    setLoadingMem(false)
+  }
+
+  useEffect(() => {
+    if (showMemories) loadMemories()
+  }, [showMemories])
+
+  const handleRefresh = () => {
+    loadMemories()
+    onSynced()
+  }
 
   return (
     <div className="ego-section calibration-section" style={{ padding: '24px 16px', background: 'var(--c-bg)' }}>
       <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px', textAlign: 'center' }}>数据与记忆管理</h3>
       
+      {/* Manual memory input */}
       <div className="mobile-card" style={{ boxShadow: 'none', border: '1px solid var(--c-border)' }}>
         <h4 style={{ fontSize: '14px', marginBottom: '8px' }}>手动录入记忆</h4>
         <textarea
@@ -298,7 +436,7 @@ function CalibrationPanel({ showToast, onSynced, onScoreChange }) {
               await addMemory(memoryInput.trim())
               showToast?.('✅ 记忆同步成功！')
               setMemoryInput('')
-              onSynced()
+              handleRefresh()
             } catch (err) {
               showToast?.(err.message)
             } finally {
@@ -310,6 +448,7 @@ function CalibrationPanel({ showToast, onSynced, onScoreChange }) {
         </button>
       </div>
 
+      {/* DM sync */}
       <div className="mobile-card" style={{ boxShadow: 'none', border: '1px solid var(--c-border)', marginTop: '12px' }}>
         <h4 style={{ fontSize: '14px', marginBottom: '8px' }}>同步私信记忆</h4>
         <button
@@ -321,7 +460,7 @@ function CalibrationPanel({ showToast, onSynced, onScoreChange }) {
             try {
               const result = await syncDmMemory()
               showToast?.(`✅ 已同步 ${result.synced || 0} 条私信记忆`)
-              onSynced()
+              handleRefresh()
             } catch (err) {
               showToast?.(err.message)
             } finally {
@@ -331,6 +470,32 @@ function CalibrationPanel({ showToast, onSynced, onScoreChange }) {
         >
           {syncingDm ? '同步中...' : '一键提取私信记忆'}
         </button>
+      </div>
+
+      {/* Memory list toggle */}
+      <div className="mobile-card" style={{ boxShadow: 'none', border: '1px solid var(--c-border)', marginTop: '12px' }}>
+        <div
+          style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            cursor: 'pointer', userSelect: 'none',
+          }}
+          onClick={() => setShowMemories(!showMemories)}
+        >
+          <h4 style={{ fontSize: '14px', margin: 0 }}>
+            已有记忆 {memories.length > 0 && <span style={{ fontWeight: 400, color: 'var(--c-text-secondary)' }}>({memories.length})</span>}
+          </h4>
+          <span style={{ fontSize: '18px', transform: showMemories ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▾</span>
+        </div>
+
+        {showMemories && (
+          <div style={{ marginTop: '12px' }}>
+            {loadingMem ? (
+              <div style={{ textAlign: 'center', color: 'var(--c-text-secondary)', padding: '12px', fontSize: '13px' }}>加载中...</div>
+            ) : (
+              <MemoryList memories={memories} onRefresh={handleRefresh} showToast={showToast} />
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -373,4 +538,3 @@ export default function Ego({ setHideNav, showToast }) {
     </div>
   )
 }
-

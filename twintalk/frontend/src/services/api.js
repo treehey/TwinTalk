@@ -160,6 +160,18 @@ export async function deleteMemory(memoryId) {
   return request(`/memories/${memoryId}`, { method: 'DELETE' });
 }
 
+export async function editMemory(memoryId, updates) {
+  return request(`/memories/${memoryId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(updates),
+  });
+}
+
+export async function searchMemories(query) {
+  const q = encodeURIComponent(query || '')
+  return request(`/memories/?search=${q}`);
+}
+
 // ---- Social ----
 export async function followUser(userId) {
   return request(`/social/follow/${userId}`, { method: 'POST' });
