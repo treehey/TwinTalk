@@ -2,16 +2,16 @@
 
 /* ===== CSS Custom Properties – Mobile-First TwinTalk Theme ===== */
 :root {
-  /* Reference design palette (from design.html) */
+  /* Reference design palette */
   --c-bg: #FFFFFF;
-  --c-feed-bg: #FFFFFF;
-  --c-text-primary: #3D3528;
-  --c-text-secondary: #7A7568;
-  --c-border: #F0EFE8;
-  --c-interactive-bg: #FFFBE6;
-  --c-accent: #F4C414;
+  --c-feed-bg: #F8F9FA;
+  --c-text-primary: #111111;
+  --c-text-secondary: #757575;
+  --c-border: #EAEAEA;
+  --c-interactive-bg: #F2F2F2;
+  --c-accent: #FFD02F;
   /* TwinTalk Gold */
-  --c-card-start: #FFFEF0;
+  --c-card-start: #FFFFFF;
   --c-card-end: #FFFFFF;
 
   /* Gradient shorthand */
@@ -65,7 +65,7 @@
   --transition-slow: 400ms cubic-bezier(0.4, 0, 0.2, 1);
 
   /* Font stack matching reference */
-  --ff-sans: 'Outfit', -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --ff-sans: 'PingFang SC', 'Poppins', 'Montserrat', -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --ff-serif: 'Noto Serif SC', 'Playfair Display', serif;
 }
 
@@ -125,17 +125,22 @@ body {
   justify-content: space-between;
   padding: 16px 20px;
   padding-top: calc(16px + env(safe-area-inset-top));
-  background: var(--c-bg);
+  background: var(--c-accent);
   z-index: 10;
-  border-bottom: 1px solid var(--c-border);
+  border-bottom: none;
 }
 
 .mobile-header-title {
-  color: var(--c-accent);
-  font-size: 20px;
-  font-weight: 400;
-  letter-spacing: 0.02em;
+  color: #111111;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.brand-font {
   font-family: "Times New Roman", Times, serif;
+  font-style: italic;
+  font-weight: 800;
+  letter-spacing: 0.02em;
 }
 
 .mobile-header-left {
@@ -269,8 +274,10 @@ body {
 /* ===== Post Cards (Feed/Social style) ===== */
 .post-card {
   padding: 24px 20px;
-  border-bottom: 1px solid var(--c-border);
-  background: linear-gradient(180deg, var(--c-card-start) 0%, var(--c-card-end) 100%);
+  background: #FFFFFF;
+  border-radius: 16px;
+  margin: 12px 16px;
+  border: none;
 }
 
 .post-card-header {
@@ -281,15 +288,15 @@ body {
 }
 
 .post-avatar {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   background-color: var(--c-interactive-bg);
-  border: 1px solid var(--c-border);
-  border-radius: 4px;
+  border: 2px solid var(--c-accent);
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 800;
   color: var(--c-text-primary);
   flex-shrink: 0;
@@ -303,9 +310,9 @@ body {
 }
 
 .post-user-name {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--c-text-primary);
+  font-size: 18px;
+  font-weight: 700;
+  color: #111111;
   line-height: 1.2;
 }
 
@@ -317,8 +324,8 @@ body {
 
 .post-content {
   font-size: 14px;
-  line-height: 1.65;
-  color: var(--c-text-primary);
+  line-height: 1.5;
+  color: #4A4A4A;
   margin-bottom: 14px;
   word-break: break-word;
 }
@@ -418,9 +425,9 @@ body {
   gap: 8px;
   padding: 12px 20px;
   min-height: 44px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-full);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   font-family: inherit;
   cursor: pointer;
   transition: all var(--transition-fast);
@@ -430,9 +437,9 @@ body {
 }
 
 .btn-primary {
-  background: var(--gradient-main);
-  color: white;
-  box-shadow: var(--shadow-md);
+  background: var(--c-accent);
+  color: #111111;
+  box-shadow: none;
 }
 
 .btn-primary:active {
@@ -509,9 +516,9 @@ body {
 
 .form-input:focus,
 .form-textarea:focus {
-  border-color: var(--c-gradient-start);
+  border-color: #111111;
   background: var(--c-bg);
-  box-shadow: 0 0 0 3px rgba(157, 133, 255, 0.15);
+  box-shadow: none;
 }
 
 .form-textarea {
@@ -532,7 +539,7 @@ body {
 
 .progress-fill {
   height: 100%;
-  background: var(--gradient-main);
+  background: var(--c-accent);
   border-radius: var(--radius-full);
   transition: width var(--transition-slow);
 }
@@ -572,16 +579,17 @@ body {
 
 .chat-bubble.user {
   align-self: flex-end;
-  background: var(--gradient-main);
-  color: white;
+  background: var(--c-accent);
+  color: #111111;
+  font-weight: 500;
   border-bottom-right-radius: 4px;
-  box-shadow: 0 4px 14px rgba(157, 133, 255, 0.22);
+  box-shadow: none;
 }
 
 .chat-bubble.assistant {
   align-self: flex-start;
   background: var(--c-bg);
-  border: 1px solid var(--c-border);
+  border: none;
   color: var(--c-text-primary);
   border-bottom-left-radius: 4px;
 }
@@ -613,16 +621,16 @@ body {
 
 .chat-input-bar input:focus,
 .chat-input-bar textarea:focus {
-  border-color: var(--c-gradient-start);
+  border-color: #111111;
   background: var(--c-bg);
-  box-shadow: 0 0 0 3px rgba(157, 133, 255, 0.12);
+  box-shadow: none;
 }
 
 /* Send button inside chat input */
 .chat-send-btn {
   width: 44px;
   height: 44px;
-  background: var(--gradient-main);
+  background: #111111;
   border: none;
   border-radius: 50%;
   color: white;
@@ -684,8 +692,8 @@ body {
 }
 
 .mirror-avatar.ai-avatar {
-  background: var(--gradient-main);
-  color: white;
+  background: var(--c-accent);
+  color: #111111;
 }
 
 .mirror-avatar.user-avatar {
@@ -753,10 +761,15 @@ body {
 .dm-inbox-list {
   flex: 1;
   overflow-y: auto;
+  padding: 12px 16px;
 }
 
 .dm-inbox-item-wrap {
-  border-bottom: 1px solid var(--c-border);
+  background: #FFFFFF;
+  border-radius: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
 }
 
 .dm-inbox-item {
@@ -765,8 +778,9 @@ body {
   gap: 14px;
   width: 100%;
   padding: 14px 16px;
-  background: var(--c-bg);
+  background: transparent;
   border: none;
+  border-radius: 16px;
   text-align: left;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -782,15 +796,15 @@ body {
   width: 50px;
   height: 50px;
   border-radius: 50%;
-  background: var(--gradient-main);
+  border: 2px solid var(--c-accent);
+  background: var(--c-interactive-bg);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 18px;
   font-weight: 800;
-  color: white;
+  color: #111111;
   flex-shrink: 0;
-  box-shadow: 0 4px 10px rgba(157, 133, 255, 0.2);
 }
 
 .dm-inbox-body {
@@ -889,29 +903,45 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--c-border);
-  background: var(--c-bg);
+  padding: 24px 20px 24px;
+  background: var(--c-accent);
+  border-bottom-left-radius: 24px;
+  border-bottom-right-radius: 24px;
+  margin-bottom: 16px;
+}
+
+.dm-chat-header .header-back-btn {
+  background: none;
+  border: none;
+  color: #111111;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
 }
 
 .dm-chat-avatar {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: var(--gradient-main);
+  border: 1px solid #111111;
+  background: var(--c-interactive-bg);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 14px;
   font-weight: 800;
-  color: white;
+  color: #111111;
   flex-shrink: 0;
 }
 
 .dm-chat-name {
   font-size: 16px;
-  font-weight: 700;
-  color: var(--c-text-primary);
+  font-weight: 800;
+  color: #111111;
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -942,13 +972,14 @@ body {
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: var(--gradient-main);
+  border: 1px solid #111111;
+  background: var(--c-interactive-bg);
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 11px;
   font-weight: 800;
-  color: white;
+  color: #111111;
   flex-shrink: 0;
 }
 
@@ -1043,7 +1074,7 @@ body {
   background: var(--c-bg);
   padding: 40px 32px;
   border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-lg);
+  box-shadow: 0 20px 48px -12px rgba(255, 208, 47, 0.4);
 }
 
 .onboarding-card .hero-emoji {
@@ -1069,11 +1100,8 @@ body {
   font-size: 32px;
   font-weight: 800;
   margin-bottom: 12px;
-  background: var(--gradient-main);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
   letter-spacing: -0.5px;
+  color: #111111;
 }
 
 .onboarding-card .subtitle {
@@ -1236,7 +1264,7 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: var(--c-text-secondary);
+  color: #BDBDBD;
   background: none;
   border: none;
   padding: 6px 0;
@@ -1252,7 +1280,7 @@ body {
 }
 
 .nav-tab.active {
-  color: var(--c-accent);
+  color: #111111;
 }
 
 .nav-tab-icon {
@@ -1304,7 +1332,7 @@ body {
   position: relative;
   background: none;
   border: none;
-  color: var(--c-text-secondary);
+  color: #111111;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1443,11 +1471,19 @@ body {
   border-color: var(--c-accent);
 }
 
+/* ===== Social Feed Horizontal ===== */
+.social-feed-horizontal::-webkit-scrollbar {
+  display: none;
+}
+
 /* ===== Post Card (Instagram-style) ===== */
 .post-card {
-  border-bottom: 1px solid var(--c-border);
+  background: #FFFFFF;
+  border-radius: 16px;
   padding: 16px;
-  background: var(--c-bg);
+  margin: 0 16px 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+  border: none;
 }
 
 .post-card-header {
@@ -1458,18 +1494,17 @@ body {
 }
 
 .post-avatar {
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  background: var(--gradient-main);
+  background: var(--c-interactive-bg);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
-  font-weight: 800;
-  color: white;
+  font-size: 24px;
   flex-shrink: 0;
-  box-shadow: 0 0 0 2px var(--c-bg), 0 0 0 3.5px var(--c-accent);
+  border: none;
+  box-shadow: none;
 }
 
 .post-user-info {
@@ -1534,16 +1569,11 @@ body {
 
 /* ===== Artistic Logo (Header) ===== */
 .twintalk-logo {
-  font-family: 'Playfair Display', "Times New Roman", serif;
+  font-family: 'Poppins', 'Inter', system-ui, sans-serif;
   font-size: 26px;
   font-weight: 800;
-  font-style: italic;
   letter-spacing: -0.5px;
-  background: var(--gradient-warm);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-size: 200% auto;
-  animation: shine 4s linear infinite;
+  color: #111111;
 }
 
 @keyframes shine {
@@ -1568,8 +1598,8 @@ h2,
 h3,
 h4,
 .mobile-header-title {
-  font-family: var(--ff-serif);
-  font-weight: 700;
+  font-family: 'Poppins', 'Inter', system-ui, sans-serif;
+  font-weight: 800;
   letter-spacing: 0.02em;
 }
 
@@ -1583,37 +1613,17 @@ h4,
   height: 72px;
   flex-shrink: 0;
   border-radius: 50%;
-  background: var(--c-bg);
-  box-shadow: 
-    0 4px 12px rgba(244, 196, 20, 0.15),
-    0 8px 32px rgba(244, 196, 20, 0.25),
-    inset 0 -2px 6px rgba(0,0,0,0.02);
+  background: var(--c-accent);
+  box-shadow: 0px 8px 16px rgba(255, 208, 47, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
   transform: translateY(-20px);
-  animation: orb-breathe 3s ease-in-out infinite;
   transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
-  border: 1px solid rgba(244, 196, 20, 0.1);
+  border: none;
 }
 
-@keyframes orb-breathe {
-  0%, 100% {
-    box-shadow: 
-      0 4px 12px rgba(244, 196, 20, 0.15),
-      0 8px 32px rgba(244, 196, 20, 0.25),
-      inset 0 -2px 6px rgba(0,0,0,0.02);
-  }
-
-  50% {
-    box-shadow: 
-      0 4px 20px rgba(244, 196, 20, 0.35),
-      0 12px 40px rgba(244, 196, 20, 0.5),
-      inset 0 -2px 8px rgba(0,0,0,0.02);
-  }
-}
-
-/* Enlarged Nav Icons (since labels are removed) */
+/* Enlarged Nav Icons */
 .nav-tab-icon svg {
   width: 28px;
   height: 28px;
@@ -1775,15 +1785,37 @@ h4,
 
 /* 1. Trait Cloud Area */
 .trait-cloud-section {
-  background: var(--c-bg);
-  background-image: radial-gradient(circle at 50% 10%, rgba(157, 133, 255, 0.05) 0%, transparent 60%);
+  background: var(--c-feed-bg);
   overflow: hidden;
 }
 
-.ego-header-block {
-  padding: 40px 20px 10px;
-  text-align: center;
+.section-yellow-header {
+  padding: 16px 20px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   z-index: 10;
+  background: var(--c-accent);
+  border-bottom-left-radius: 24px;
+  border-bottom-right-radius: 24px;
+  margin-bottom: 16px;
+  height: 72px; /* 固定高度确保完全一致 */
+  min-height: 72px;
+  max-height: 72px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.section-yellow-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 800;
+  color: #111111;
+  line-height: 1.2;
+}
+
+.ego-header-block {
+  /* Reserved for Ego-specific header tweaks when needed. */
 }
 
 .trait-canvas {
@@ -1802,7 +1834,8 @@ h4,
   padding: 6px 14px;
   font-weight: 600;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  animation: ego-float 6s ease-in-out infinite;
+  transform: translate(-50%, -50%);
+  animation: ego-float 6s ease-in-out infinite both;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1810,30 +1843,31 @@ h4,
 }
 
 .trait-bubble.size-large {
-  font-size: 16px;
-  padding: 10px 20px;
+  font-size: 20px;
+  padding: 12px 24px;
 }
 
 .trait-bubble.size-medium {
-  font-size: 14px;
+  font-size: 16px;
+  padding: 8px 16px;
 }
 
 .trait-bubble.size-small {
-  font-size: 12px;
-  padding: 4px 10px;
+  font-size: 14px;
+  padding: 6px 12px;
 }
 
 @keyframes ego-float {
   0% {
-    transform: translateY(0px) rotate(0deg);
+    transform: translate(-50%, -50%);
   }
 
   50% {
-    transform: translateY(-10px) rotate(2deg);
+    transform: translate(-50%, calc(-50% - 10px));
   }
 
   100% {
-    transform: translateY(0px) rotate(0deg);
+    transform: translate(-50%, -50%);
   }
 }
 
@@ -1895,16 +1929,18 @@ h4,
   padding: 0 0 100px;
   height: 100%;
   overflow-y: auto;
-  background: var(--c-bg);
+  background: var(--c-feed-bg);
 }
 
 .report-page-header {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 24px 20px 16px;
-  border-bottom: 1px solid var(--c-border);
-  background: linear-gradient(135deg, rgba(244, 196, 20, 0.06) 0%, rgba(157, 133, 255, 0.06) 100%);
+  padding: 24px 20px 24px;
+  background: var(--c-accent);
+  border-bottom-left-radius: 24px;
+  border-bottom-right-radius: 24px;
+  margin-bottom: 16px;
 }
 
 .report-page-header-icon {
@@ -1938,9 +1974,9 @@ h4,
   align-items: center;
   gap: 14px;
   padding: 14px 16px;
-  background: var(--c-bg);
-  border: 1px solid var(--c-border);
-  border-radius: var(--radius-lg);
+  background: #FFFFFF;
+  border: none;
+  border-radius: 16px;
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: left;
@@ -1991,7 +2027,7 @@ h4,
 
 .report-list-card-subtitle {
   font-size: 12px;
-  color: var(--c-accent);
+  color: #757575;
   margin-top: 2px;
   white-space: nowrap;
   overflow: hidden;
@@ -2051,7 +2087,7 @@ h4,
   padding: 0 0 100px;
   height: 100%;
   overflow-y: auto;
-  background: var(--c-bg);
+  background: var(--c-feed-bg);
 }
 
 .report-back-btn {
@@ -2075,8 +2111,9 @@ h4,
 .report-detail-header {
   padding: 20px 20px 24px;
   text-align: center;
-  background: linear-gradient(135deg, rgba(244, 196, 20, 0.08) 0%, rgba(157, 133, 255, 0.08) 100%);
-  border-bottom: 1px solid var(--c-border);
+  background: var(--c-accent);
+  border-radius: 24px;
+  margin: 16px;
 }
 
 .report-detail-emoji {
@@ -2125,11 +2162,15 @@ h4,
 /* -- Report Sections -- */
 .report-section {
   padding: 20px;
-  border-bottom: 1px solid var(--c-border);
+  margin: 0 16px 16px;
+  background: #FFFFFF;
+  border-radius: 16px;
+  border: none;
 }
 
 .report-section:last-child {
   border-bottom: none;
+  margin-bottom: 32px;
 }
 
 .report-section-header {
@@ -2196,7 +2237,7 @@ h4,
 .report-quote {
   margin: 0;
   padding: 12px 16px;
-  background: linear-gradient(135deg, rgba(244, 196, 20, 0.05) 0%, rgba(157, 133, 255, 0.05) 100%);
+  background: #F8F9FA;
   border-left: 3px solid var(--c-accent);
   border-radius: 0 var(--radius-md) var(--radius-md) 0;
   font-size: 14px;
@@ -2207,7 +2248,7 @@ h4,
 
 /* Match analysis */
 .report-section-match {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.04) 0%, rgba(157, 133, 255, 0.04) 100%);
+  background: #F8F9FA;
 }
 
 .report-match-text {
@@ -2316,4 +2357,4 @@ h4,
 
 .mirror-suggestion-btn:active {
   transform: scale(0.98);
-}
+}

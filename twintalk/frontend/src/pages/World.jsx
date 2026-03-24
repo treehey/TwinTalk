@@ -392,10 +392,10 @@ export default function World({ setHideNav, showToast, onUnreadChange, pendingDm
 
   // Refresh conversations when drawer opens so data is never stale
   useEffect(() => {
-    if (isActive) {
+    if (isActive && !pendingDmTargetId) {
       refreshConversations(false).catch(console.error)
     }
-  }, [isActive])
+  }, [isActive, pendingDmTargetId])
 
   const openConversation = async (conv) => {
     setCurrentConversation(conv)

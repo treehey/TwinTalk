@@ -107,7 +107,7 @@ export default function App() {
           </button>
 
           {/* Center: TwinTalk Artistic Logo */}
-          <div className="twintalk-logo" style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
+          <div className="twintalk-logo brand-font" style={{ position: 'absolute', left: '50%', transform: 'translateX(-50%)', fontSize: '24px' }}>
             TwinTalk
           </div>
 

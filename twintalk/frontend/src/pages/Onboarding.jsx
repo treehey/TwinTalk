@@ -43,9 +43,9 @@ function LoginStep({ onDone }) {
     flex: 1,
     padding: '10px',
     border: 'none',
-    borderBottom: tab === t ? '3px solid var(--text-primary)' : '3px solid transparent',
+    borderBottom: tab === t ? '3px solid #111111' : '3px solid transparent',
     background: 'transparent',
-    color: tab === t ? 'var(--text-primary)' : 'var(--text-muted)',
+    color: tab === t ? '#111111' : 'var(--text-muted)',
     borderRadius: 0,
     cursor: 'pointer',
     fontWeight: tab === t ? '700' : '400',
@@ -58,55 +58,62 @@ function LoginStep({ onDone }) {
 
   return (
     <div className="onboarding-container">
-      <div className="onboarding-card">
-        <h1>TwinTalk</h1>
-        <p className="subtitle">
-          创建你的数字孪生体 — 它将学习你的性格、价值观和表达方式，<br />
-          成为另一个「你」。
-        </p>
-
-        {/* Bauhaus Tabs */}
-        <div style={{ display: 'flex', borderBottom: '2px solid var(--border-subtle)', marginBottom: '24px' }}>
-          <button style={tabStyle('login')} onClick={() => { setTab('login'); setError('') }}>登录</button>
-          <button style={tabStyle('register')} onClick={() => { setTab('register'); setError('') }}>注册</button>
+      <div className="onboarding-card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div style={{
+          background: 'var(--c-accent)',
+          padding: '40px 20px 32px',
+          marginBottom: '32px'
+        }}>
+          <h1 className="brand-font" style={{ fontSize: '42px', color: '#111111', margin: '0 0 12px 0' }}>TwinTalk</h1>
+          <p className="subtitle" style={{ margin: 0, color: 'rgba(17, 17, 17, 0.7)' }}>
+            「 让灵魂相遇在见面前 」
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label className="form-label">手机号</label>
-            <input
-              className="form-input"
-              type="text"
-              placeholder="输入手机号..."
-              value={phoneNumber}
-              onChange={(e) => setPhoneNumber(e.target.value)}
-              autoFocus
-            />
+        <div style={{ padding: '0 32px 40px' }}>
+          {/* Bauhaus Tabs */}
+          <div style={{ display: 'flex', borderBottom: '2px solid var(--border-subtle)', marginBottom: '24px' }}>
+            <button style={tabStyle('login')} onClick={() => { setTab('login'); setError('') }}>登录</button>
+            <button style={tabStyle('register')} onClick={() => { setTab('register'); setError('') }}>注册</button>
           </div>
-          <div className="form-group">
-            <label className="form-label">密码</label>
-            <input
-              className="form-input"
-              type="password"
-              placeholder="输入密码..."
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
-          {error && (
-            <p style={{ color: 'var(--accent-danger)', fontSize: '14px', marginBottom: '16px' }}>
-              {error}
-            </p>
-          )}
-          <button className="btn btn-primary btn-lg" type="submit" disabled={loading} style={{ width: '100%' }}>
-            {loading
-              ? <span className="loading-dots"><span /><span /><span /></span>
-              : tab === 'register' ? '注册并开始 →' : '登录 →'}
-          </button>
-        </form>
-        <p style={{ marginTop: '24px', fontSize: '13px', color: 'var(--text-muted)' }}>
-          你的数据完全由你掌控，安全且私密
-        </p>
+
+          <form onSubmit={handleSubmit}>
+            <div className="form-group">
+              <label className="form-label">手机号</label>
+              <input
+                className="form-input"
+                type="text"
+                placeholder="输入手机号..."
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">密码</label>
+              <input
+                className="form-input"
+                type="password"
+                placeholder="输入密码..."
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+            {error && (
+              <p style={{ color: 'var(--accent-danger)', fontSize: '14px', marginBottom: '16px' }}>
+                {error}
+              </p>
+            )}
+            <button className="btn btn-primary btn-lg" type="submit" disabled={loading} style={{ width: '100%' }}>
+              {loading
+                ? <span className="loading-dots"><span /><span /><span /></span>
+                : tab === 'register' ? '注册并开始 →' : '登录 →'}
+            </button>
+          </form>
+          <p style={{ marginTop: '24px', fontSize: '15px', color: 'var(--text-muted)' }}>
+          数字孪生驱动的社交新范式
+          </p>
+        </div>
       </div>
     </div>
   )
