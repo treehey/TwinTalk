@@ -106,6 +106,8 @@ class SocialService:
                 {str(i).strip().lower() for i in my_interests if str(i).strip()}
                 & {str(i).strip().lower() for i in cand_interests if str(i).strip()}
             )
+            if not candidate_user or not candidate_profile:
+                continue
 
             # Build profile tags like Ego page does
             extra = profile.extra_info or {}
@@ -146,7 +148,6 @@ class SocialService:
             match_reason = "，".join(reasons) + "。"
 
             matches.append({
-<<<<<<< HEAD
                 "user": user.to_dict(),
                 "score": round(total_score, 4),
                 "common_count": len(common),
@@ -160,7 +161,6 @@ class SocialService:
                     "value": round(value_score, 4),
                     "style": round(style_score, 4),
                 },
-=======
                 "user": candidate_user.to_dict(),
                 "score": r["final_score"],
                 "common_count": len(common_interests),
@@ -168,7 +168,6 @@ class SocialService:
                 "common_interests": common_interests,
                 "match_reason": r["match_reason"],
                 "score_breakdown": r["score_breakdown"],
->>>>>>> 4d78eb501c90ac794285c724a555767a25dce5c4
             })
 
         # Optional: shuffle with refresh_token for diversity
