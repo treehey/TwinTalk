@@ -31,8 +31,9 @@ function LoginStep({ onDone }) {
         if (!phoneNumber.trim() || !password) { setError('请输入手机号和密码'); setLoading(false); return }
         data = await login(phoneNumber.trim(), password)
       }
-      onDone(data.user)
+      onDone(data?.user || {})
     } catch (err) {
+
       setError(err.message)
     } finally {
       setLoading(false)
@@ -357,9 +358,10 @@ export default function Onboarding({ onLogin }) {
   const handleLoginDone = (userData) => {
     setUser(userData)
     // New users go through onboarding questionnaire; returning users skip
-    if (!userData.onboarding_completed) {
+    if (!userData?.onboarding_completed) {
       setStep('questionnaire')
     } else {
+
       onLogin(userData)
     }
   }
