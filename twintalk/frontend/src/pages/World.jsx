@@ -247,7 +247,7 @@ function DmChat({
         </div>
 
         {/* Text + send */}
-        <div className="dm-input-row">
+        <div className="dm-input-row" style={{ marginBottom: '12px' }}>
           <input
             type="text"
             value={input}
@@ -256,15 +256,27 @@ function DmChat({
             disabled={sending}
             style={{
               flex: 1,
-              padding: '12px 16px',
-              minHeight: '44px',
-              background: 'var(--c-interactive-bg)',
-              border: '1px solid var(--c-border)',
-              borderRadius: 'var(--radius-full)',
-              color: 'var(--c-text-primary)',
+              padding: '12px 18px',
+              minWidth: 0,
+              minHeight: '48px',
+              background: 'rgba(0, 0, 0, 0.04)',
+              border: '1px solid transparent',
+              borderRadius: '24px',
+              color: '#111111',
               fontSize: '15px',
               fontFamily: 'inherit',
               outline: 'none',
+              transition: 'all 0.3s cubic-bezier(0.25, 1, 0.5, 1)',
+            }}
+            onFocus={(e) => {
+              e.target.style.background = 'rgba(255, 255, 255, 0.9)';
+              e.target.style.borderColor = 'rgba(0, 0, 0, 0.1)';
+              e.target.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.05)';
+            }}
+            onBlur={(e) => {
+              e.target.style.background = 'rgba(0, 0, 0, 0.04)';
+              e.target.style.borderColor = 'transparent';
+              e.target.style.boxShadow = 'none';
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
@@ -284,18 +296,19 @@ function DmChat({
         </div>
 
         {/* Agent assist row */}
-        <div className="dm-assist-row">
-          <label className="dm-assist-label">
+        <div className="dm-assist-row" style={{ padding: '0 4px', marginBottom: '16px' }}>
+          <label className="dm-assist-label" style={{ fontSize: '13px', marginRight: '8px' }}>
             <input
               type="checkbox"
               checked={agentReply}
               onChange={(e) => setAgentReply(e.target.checked)}
+              style={{ width: '16px', height: '16px', accentColor: '#111' }}
             />
             让对方 Agent 代聊
           </label>
           <button
-            className="btn btn-sm btn-secondary"
-            style={{ borderRadius: 'var(--radius-full)' }}
+            className="btn btn-sm"
+            style={{ borderRadius: 'var(--radius-full)', background: 'rgba(0,0,0,0.05)', color: '#111', border: 'none', padding: '6px 14px', fontSize: '13px', fontWeight: '600' }}
             onClick={onSuggest}
             disabled={suggesting}
           >
@@ -303,7 +316,8 @@ function DmChat({
           </button>
           {suggestion && (
             <button
-              className="btn btn-sm btn-ghost"
+              className="btn btn-sm"
+              style={{ color: '#666', background: 'transparent', border: 'none', fontSize: '13px' }}
               onClick={() => setInput(suggestion)}
             >
               使用
@@ -311,10 +325,10 @@ function DmChat({
           )}
         </div>
 
-        <div style={{ padding: '0 16px', marginBottom: '8px' }}>
+        <div style={{ marginBottom: '8px' }}>
           <button
-            className="btn btn-sm btn-ghost"
-            style={{ width: '100%', color: 'var(--c-accent)', border: '1px solid var(--c-accent)' }}
+            className="btn btn-sm"
+            style={{ width: '100%', color: 'var(--c-accent)', border: '1px solid var(--c-accent)', background: 'rgba(157, 133, 255, 0.05)', borderRadius: '16px', padding: '10px 0', fontSize: '14px', fontWeight: '600' }}
             onClick={onStartAgentChat}
             disabled={agentChatting}
           >

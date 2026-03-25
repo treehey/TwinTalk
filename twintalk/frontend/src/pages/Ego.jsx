@@ -75,6 +75,7 @@ function generateDynamicTraits(profile) {
 function TraitCloud({ fitnessIndex, profile }) {
   const syncRate = fitnessIndex || 50
   const activeTraits = generateDynamicTraits(profile)
+  const [contextMenu, setContextMenu] = useState(null)
   
   return (
     <div className="ego-section trait-cloud-section">
@@ -115,6 +116,15 @@ function TraitCloud({ fitnessIndex, profile }) {
               left: t.left,
               animationDelay: `${Math.random() * 2}s`
             }}
+            onContextMenu={(e) => {
+              e.preventDefault()
+              setContextMenu({
+                show: true,
+                x: e.clientX,
+                y: e.clientY,
+                trait: t.text
+              })
+            }}
           >
             {t.text}
           </div>
@@ -125,6 +135,36 @@ function TraitCloud({ fitnessIndex, profile }) {
           </div>
         )}
       </div>
+
+      {contextMenu && contextMenu.show && (
+        <div className="context-menu-overlay" onClick={() => setContextMenu(null)}>
+          <div 
+            className="ios-context-menu" 
+            style={{ 
+              top: contextMenu.y, 
+              left: contextMenu.x 
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button 
+              className="ios-context-menu-item danger"
+              onClick={() => {
+                // Here we would normally call API to hide the trait
+                // For now visual only, or wire up to a backend endpoint later
+                setContextMenu(null)
+              }}
+            >
+              屏蔽标签
+            </button>
+            <button 
+              className="ios-context-menu-item"
+              onClick={() => setContextMenu(null)}
+            >
+              取消
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="scroll-down-hint">
         <span>上滑与本我对谈</span>
@@ -506,6 +546,36 @@ export default function Ego({ setHideNav, showToast }) {
   const [profile, setProfile] = useState(null)
   const [fitnessIndex, setFitnessIndex] = useState(50)
   const [manualBoost, setManualBoost] = useState(0)
+  
+  // Snap scroll tracking
+  const scrollRef = useRef(null)
+  const [currentSection, setCurrentSection] = useState(0)
+
+  // Track the active section via intersection or scroll position
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    
+    // Very simple scroll calculation based on height
+    const handleScroll = () => {
+      const index = Math.round(el.scrollTop / el.clientHeight);
+      if (index !== currentSection) {
+        setCurrentSection(index);
+      }
+    };
+    
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    return () => el.removeEventListener('scroll', handleScroll);
+  }, [currentSection]);
+
+  const scrollToSection = (index) => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({
+        top: index * scrollRef.current.clientHeight,
+        behavior: 'smooth'
+      });
+    }
+  }
 
   const reloadProfile = () => {
     getMyProfile()
@@ -519,7 +589,19 @@ export default function Ego({ setHideNav, showToast }) {
   useEffect(() => { reloadProfile() }, [])
 
   return (
-    <div className="ego-page-scroll">
+    <div className="ego-container" ref={scrollRef}>
+      
+      {/* High-end Dot Nav for the 3 sections */}
+      <div className="ego-dot-nav">
+        {[0, 1, 2].map((idx) => (
+          <div 
+            key={idx} 
+            className={`ego-dot ${currentSection === idx ? 'active' : ''}`}
+            onClick={() => scrollToSection(idx)}
+          />
+        ))}
+      </div>
+
       {/* Section 1: Trait Cloud */}
       <TraitCloud 
         fitnessIndex={fitnessIndex + manualBoost} 

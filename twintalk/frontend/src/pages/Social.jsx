@@ -1,14 +1,11 @@
 import { useEffect, useState } from 'react'
 import { findMatches, followUser, unfollowUser, getFollowing, startDmConversation, startAgentChat } from '../services/api'
 
-// Helper: generate consistent emoji avatar
-const getEmojiAvatar = (name) => {
-  if (!name) return '🤖';
-  const emojis = ['👽', '👾', '🚀', '🔮', '🎭', '⚡', '🔥', '🌟', '🧠', '👁️', '🎲', '🧩'];
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash += name.charCodeAt(i);
-  return emojis[hash % emojis.length];
-};
+// Helper: initial letter avatar
+const getTypoAvatar = (name) => {
+  if (!name) return 'T'
+  return name.charAt(0).toUpperCase()
+}
 
 // Helper: extract short phrase tags from bio string
 const extractTags = (bio, interests) => {
@@ -63,8 +60,8 @@ function MatchCard({ match, onStartDm, showToast, style }) {
       {/* Hero header with gradient */}
       <div style={{ background: heroGradient, padding: '28px 20px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
         {/* Large avatar */}
-        <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'rgba(255,255,255,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '44px', backdropFilter: 'blur(4px)', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }}>
-          {getEmojiAvatar(match.user.nickname)}
+        <div className="avatar-typo" style={{ width: '80px', height: '80px', fontSize: '32px', boxShadow: '0 4px 16px rgba(0,0,0,0.1)' }}>
+          {getTypoAvatar(match.user.nickname)}
         </div>
 
         {/* Name */}
