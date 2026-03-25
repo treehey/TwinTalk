@@ -11,13 +11,7 @@ class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-in-prod")
     
     # Security
-    # Extend allowed origins to include any common deployment domains or IP addresses
-    # But ideally, use environmental variable for production domains.
-    ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",") 
-    # Important: In production, do not use "*" with credentials allowed, but for this demo, 
-    # we might need to be permissive if the user doesn't know their domain yet. 
-    # Or, the user's issue might be exactly this. If backend rejects Origin, frontend gets empty response or error.
-
+    ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
     MAX_CONTENT_LENGTH = 5 * 1024 * 1024  # 限制请求体最大 5MB，防止 DDoS 和大传参
     RATELIMIT_DEFAULT = "200 per day; 50 per hour"
     

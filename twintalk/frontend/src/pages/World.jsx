@@ -47,10 +47,30 @@ function formatTime(iso) {
   }).format(d)
 }
 
-function getAvatarLabel(name) {
-  if (!name) return '匿'
-  return name.trim().slice(0, 1).toUpperCase()
-}
+// Helper: consistent emoji avatar
+const getEmojiAvatar = (name) => {
+  if (!name) return '🤖';
+  const emojis = ['👽', '👾', '🚀', '🔮', '🎭', '⚡', '🔥', '🌟', '🧠', '👁️', '🎲', '🧩'];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash += name.charCodeAt(i);
+  return emojis[hash % emojis.length];
+};
+
+// Helper: consistent gradient
+const getAvatarGradient = (name) => {
+  if (!name) return 'linear-gradient(135deg, #e0e0e0 0%, #bdbdbd 100%)';
+  const gradients = [
+    'linear-gradient(135deg, #FFD02F 0%, #FF9800 100%)',
+    'linear-gradient(135deg, #B2EBF2 0%, #80DEEA 100%)',
+    'linear-gradient(135deg, #E1BEE7 0%, #CE93D8 100%)',
+    'linear-gradient(135deg, #C8E6C9 0%, #81C784 100%)',
+    'linear-gradient(135deg, #FFCDD2 0%, #EF9A9A 100%)',
+    'linear-gradient(135deg, #FFF9C4 0%, #FFF176 100%)',
+  ];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash += name.charCodeAt(i);
+  return gradients[hash % gradients.length];
+};
 
 /* ── DmInbox ─────────────────────────────────────────── */
 function DmInbox({
@@ -116,7 +136,18 @@ function DmInbox({
                   onClick={() => onOpenConversation(conv)}
                   type="button"
                 >
-                  <div className="dm-inbox-avatar">{getAvatarLabel(name)}</div>
+                  <div 
+                    className="dm-inbox-avatar"
+                    style={{ 
+                      background: getAvatarGradient(name),
+                      color: '#111', 
+                      fontSize: '20px',
+                      border: 'none',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.08)' 
+                    }}
+                  >
+                    {getEmojiAvatar(name)}
+                  </div>
                   <div className="dm-inbox-body">
                     <div className="dm-inbox-row dm-inbox-row-top">
                       <strong>{name}{isPinned ? ' 📌' : ''}</strong>
@@ -193,7 +224,18 @@ function DmChat({
           <BackIcon />
           返回
         </button>
-        <div className="dm-chat-avatar">{getAvatarLabel(partnerName)}</div>
+        <div 
+          className="dm-chat-avatar"
+          style={{ 
+            background: getAvatarGradient(partnerName),
+            color: '#111', 
+            fontSize: '18px',
+            border: 'none',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.06)' 
+          }}
+        >
+          {getEmojiAvatar(partnerName)}
+        </div>
         <span className="dm-chat-name">{partnerName}</span>
       </div>
 
@@ -213,7 +255,18 @@ function DmChat({
           return (
             <div key={msg.id} className={`dm-message-row ${isPartner ? '' : 'self'}`}>
               {isPartner && (
-                <div className="dm-message-avatar">{getAvatarLabel(partnerName)}</div>
+                <div 
+                  className="dm-message-avatar"
+                  style={{ 
+                    background: getAvatarGradient(partnerName),
+                    color: '#111', 
+                    fontSize: '14px',
+                    border: 'none',
+                    boxShadow: '0 1px 4px rgba(0,0,0,0.05)' 
+                  }}
+                >
+                  {getEmojiAvatar(partnerName)}
+                </div>
               )}
               <div
                 className={`chat-bubble ${isPartner ? 'assistant' : 'user'}`}

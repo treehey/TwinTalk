@@ -2,6 +2,30 @@ import { useEffect, useRef, useState } from 'react'
 import { getDmStats, getMyProfile, sendMessage, addMemory, getAlignmentQuestions, submitAlignmentAnswers, syncDmMemory, getMirrorGreeting, listMemories, deleteMemory, editMemory } from '../services/api'
 import { SendIcon } from '../icons'
 
+/* ── Helpers ── */
+const getEmojiAvatar = (name) => {
+  if (!name) return '🤖';
+  const emojis = ['👽', '👾', '🚀', '🔮', '🎭', '⚡', '🔥', '🌟', '🧠', '👁️', '🎲', '🧩'];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash += name.charCodeAt(i);
+  return emojis[hash % emojis.length];
+};
+
+const getAvatarGradient = (name) => {
+  if (!name) return 'linear-gradient(135deg, #e0e0e0 0%, #bdbdbd 100%)';
+  const gradients = [
+    'linear-gradient(135deg, #FFD02F 0%, #FF9800 100%)',
+    'linear-gradient(135deg, #B2EBF2 0%, #80DEEA 100%)',
+    'linear-gradient(135deg, #E1BEE7 0%, #CE93D8 100%)',
+    'linear-gradient(135deg, #C8E6C9 0%, #81C784 100%)',
+    'linear-gradient(135deg, #FFCDD2 0%, #EF9A9A 100%)',
+    'linear-gradient(135deg, #FFF9C4 0%, #FFF176 100%)',
+  ];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash += name.charCodeAt(i);
+  return gradients[hash % gradients.length];
+};
+
 /* ── MOCK TRAITS FOR VISUAL CLOUD (Fallback) ── */
 const MOCK_TRAITS = [
   { text: "INTP 架构师", size: 'large', color: '#9D85FF', top: '45%', left: '35%' },
@@ -143,8 +167,8 @@ function MirrorChat({ setHideNav, onChatUpdate }) {
   const bottomRef = useRef(null)
   
   // Note: For full fullscreen immersion, we can optionally hide nav on focus.
-  const handleFocus = () => setHideNav?.(true)
-  const handleBlur = () => setHideNav?.(false)
+  // const handleFocus = () => setHideNav?.(true)
+  // const handleBlur = () => setHideNav?.(false)
 
   // Fetch proactive greeting on mount
   useEffect(() => {
@@ -204,6 +228,9 @@ function MirrorChat({ setHideNav, onChatUpdate }) {
     }
   }
 
+  const userName = 'Me';
+  const aiName = 'AI';
+
   return (
     <div className="ego-section mirror-chat-section">
       <div className="mirror-shell" style={{ height: '100%', borderRadius: 0, border: 'none' }}>
@@ -221,8 +248,17 @@ function MirrorChat({ setHideNav, onChatUpdate }) {
         <div className="mirror-messages" style={{ paddingBottom: '20px' }}>
           {messages.map((msg, i) => (
             <div key={i} className={`mirror-msg-row ${msg.role === 'user' ? 'user-row' : ''}`}>
-              <div className={`mirror-avatar ${msg.role === 'assistant' ? 'ai-avatar' : 'user-avatar'}`}>
-                {msg.role === 'assistant' ? 'AI' : '我'}
+               <div 
+                className={`mirror-avatar ${msg.role === 'assistant' ? 'ai-avatar' : 'user-avatar'}`}
+                style={{ 
+                  background: getAvatarGradient(msg.role === 'assistant' ? aiName : userName),
+                  color: '#111', 
+                  fontSize: '16px',
+                  border: 'none',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+                }}
+              >
+                {getEmojiAvatar(msg.role === 'assistant' ? aiName : userName)}
               </div>
               <div
                 className={`chat-bubble ${msg.role === 'user' ? 'user' : 'assistant'}`}
@@ -234,7 +270,18 @@ function MirrorChat({ setHideNav, onChatUpdate }) {
           ))}
           {sending && (
             <div className="mirror-msg-row">
-              <div className="mirror-avatar ai-avatar">AI</div>
+              <div 
+                className="mirror-avatar ai-avatar"
+                style={{ 
+                  background: getAvatarGradient(aiName),
+                  color: '#111', 
+                  fontSize: '16px',
+                  border: 'none',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.08)' 
+                }}
+              >
+                {getEmojiAvatar(aiName)}
+              </div>
               <div className="chat-bubble assistant" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div className="loading-dots"><span /><span /><span /></div>
                 <span style={{ fontSize: '13px', color: 'var(--c-text-secondary)' }}>正在思考...</span>
@@ -266,8 +313,8 @@ function MirrorChat({ setHideNav, onChatUpdate }) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') handleSend() }}
-            onFocus={handleFocus}
-            onBlur={handleBlur}
+            // onFocus={handleFocus}
+            // onBlur={handleBlur}
             disabled={sending}
           />
           <button

@@ -98,21 +98,52 @@ const CommentSection = ({ commentsList, onAddComment }) => {
   );
 };
 
+/* ── Helpers ── */
+const getEmojiAvatar = (name) => {
+  if (!name) return '🤖';
+  const emojis = ['👽', '👾', '🚀', '🔮', '🎭', '⚡', '🔥', '🌟', '🧠', '👁️', '🎲', '🧩'];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash += name.charCodeAt(i);
+  return emojis[hash % emojis.length];
+};
+
+const getAvatarGradient = (name) => {
+  if (!name) return 'linear-gradient(135deg, #e0e0e0 0%, #bdbdbd 100%)';
+  const gradients = [
+    'linear-gradient(135deg, #FFD02F 0%, #FF9800 100%)',
+    'linear-gradient(135deg, #B2EBF2 0%, #80DEEA 100%)',
+    'linear-gradient(135deg, #E1BEE7 0%, #CE93D8 100%)',
+    'linear-gradient(135deg, #C8E6C9 0%, #81C784 100%)',
+    'linear-gradient(135deg, #FFCDD2 0%, #EF9A9A 100%)',
+    'linear-gradient(135deg, #FFF9C4 0%, #FFF176 100%)',
+  ];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash += name.charCodeAt(i);
+  return gradients[hash % gradients.length];
+};
+
 /* ── PostCard ── */
 const PostCard = ({ post, onLike, likedPosts, onAddComment }) => {
   const isLiked = likedPosts.has(post.id);
   const [showComments, setShowComments] = useState(false);
-
-  const getAvatarLetter = (name) => {
-    return name ? name.trim().slice(0, 1).toUpperCase() : '?';
-  };
 
   const commentsCount = post.commentsList ? post.commentsList.length : (post.comments || 0);
 
   return (
     <article className="post-card">
       <div className="post-card-header">
-        <div className="post-avatar">{getAvatarLetter(post.userName)}</div>
+        <div 
+          className="post-avatar" 
+          style={{ 
+            background: getAvatarGradient(post.userName),
+            color: '#111',
+            fontSize: '20px',
+            border: 'none',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+          }}
+        >
+          {getEmojiAvatar(post.userName)}
+        </div>
         <div className="post-user-info">
           <span className="post-user-name">{post.userName}</span>
           <span className="post-user-meta">{post.userHandle} · {post.timeAgo}</span>
