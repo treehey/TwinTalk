@@ -52,18 +52,24 @@ export async function register(phone_number, password) {
     method: 'POST',
     body: JSON.stringify({ phone_number, password }),
   });
-  setUserId(data.user.id);
+  if (data?.user?.id) {
+    setUserId(data.user.id);
+  }
   return data;
 }
+
 
 export async function login(phone_number, password) {
   const data = await request('/auth/login', {
     method: 'POST',
     body: JSON.stringify({ phone_number, password }),
   });
-  setUserId(data.user.id);
+  if (data?.user?.id) {
+    setUserId(data.user.id);
+  }
   return data;
 }
+
 
 export async function getMe() {
   return request('/auth/me');
