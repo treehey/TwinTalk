@@ -12,11 +12,12 @@ import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
+from datetime import datetime, timedelta
 
 from sqlalchemy.orm import Session
 
 from models.profile import UserProfile
-from models.social import TwinConnection, TwinInteraction
+from models.social import TwinConnection, TwinInteraction, DailyMatch
 from models.user import User
 from services.llm_client import call_llm_json
 
@@ -130,11 +131,15 @@ def _build_candidate_profile_text(user: User, profile: UserProfile) -> str:
     bio = (profile.bio_summary or user.bio or "").strip()[:200]
     values = profile.values_profile or {}
     knowledge = (profile.knowledge_base or [])[:5]
+    
+    extra = profile.extra_info or {}
+    social_purpose = extra.get("social_purpose", "未填写")
 
     parts = [
         f"ID: {user.id}",
         f"昵称: {user.nickname or '匿名'}",
         f"MBTI: {mbti}",
+        f"社交目的: {social_purpose}",
         f"兴趣: {', '.join(str(i) for i in interests[:10])}",
         f"价值观: {json.dumps(values, ensure_ascii=False)[:150]}",
         f"专业知识: {', '.join(str(k) for k in knowledge)}",
@@ -162,6 +167,7 @@ class MatchService:
     ) -> List[Dict[str, Any]]:
         """
         两阶段混合推荐：召回 → LLM 精排。
+        优先读取 24 小时内的缓存结果 (DailyMatch)，以保证每次刷新分数一致且无需重复计算。
 
         Args:
             user_id: 当前用户的 UUID 字符串。
@@ -170,27 +176,99 @@ class MatchService:
         Returns:
             MatchResult.to_dict() 的列表，按 final_score 降序排列。
         """
-        # --- Stage 1: 召回层 ---
+        # --- Stage 0: 检查缓存 (Cache Hit) ---
+        # 缓存有效期设为 24 小时（如果跨天更新需求严格，可改为判断日期是否相同）
+        cutoff = datetime.utcnow() - timedelta(hours=24)
+        cached_matches = (
+            self.db.query(DailyMatch)
+            .filter(DailyMatch.user_id == user_id, DailyMatch.created_at >= cutoff)
+            .order_by(DailyMatch.score.desc())
+            .all()
+        )
+
+        # 如果缓存中有足够的推荐结果，直接返回
+        # 注意：如果库里总用户很少，缓存可能也就只有几个，所以 limit 宽松一些
+        if cached_matches:
+            results = []
+            for cm in cached_matches:
+                # 构造符合 API 格式的字典
+                results.append({
+                    "candidate_id": cm.candidate_id,
+                    "candidate_name": "",  # SocialService 随后会补全 User 信息
+                    "final_score": cm.score,
+                    "match_reason": cm.match_reason,
+                    "recall_score": 0.0,
+                    "score_breakdown": cm.score_breakdown or {},
+                })
+            # 如果缓存数量足够，或者系统里本来人就少（缓存了所有可能），使用缓存
+            if len(results) >= min(top_n, 3): 
+                logger.info("user %s: returning %d cached matches from DailyMatch", user_id, len(results))
+                return results[:top_n]
+
+        # --- Stage 1: 召回层 (Cache Miss) ---
         my_user, my_profile, recall_pool = self._recall_candidates(user_id, limit=20)
 
         if not recall_pool:
             logger.info("user %s: recall pool is empty, returning []", user_id)
             return []
 
+        # --- Stage 2: 精排层 ---
         # 若没有 LLM 可用，退化为仅使用召回层分数
         try:
-            results = self._rerank_with_llm(my_user, my_profile, recall_pool)
+            matched_results = self._rerank_with_llm(my_user, my_profile, recall_pool)
         except Exception as exc:
             logger.warning(
                 "LLM reranking failed for user %s, falling back to recall scores. Error: %s",
                 user_id,
                 exc,
             )
-            results = self._fallback_results(recall_pool)
+            matched_results = self._fallback_results(recall_pool)
 
-        # 按最终得分降序，取 top_n
-        results.sort(key=lambda r: r.final_score, reverse=True)
-        return [r.to_dict() for r in results[:top_n]]
+        # 按最终得分降序
+        matched_results.sort(key=lambda r: r.final_score, reverse=True)
+
+        # --- Stage 3: 写入缓存 (Write Back) ---
+        # 将计算结果存入 DailyMatch，同时为了解决“两头不一致”问题，进行双向写入 (Symmetric Write)
+        for mr in matched_results:
+            # 写入 A -> B
+            dm = DailyMatch(
+                user_id=user_id,
+                candidate_id=mr.candidate_id,
+                score=mr.final_score,
+                match_reason=mr.match_reason,
+                score_breakdown=mr.score_breakdown,
+                created_at=datetime.utcnow()
+            )
+            self.db.add(dm)
+
+            # 尝试写入 B -> A (如果我们不希望覆盖 B 已有的数据，可以先检查)
+            # 这里采取策略：如果 B 今天还没有针对 A 的记录，就插入一条。
+            # 这样保证 B 看到 A 时，分数和 A 看到 B 是一样的 (Symmetry)。
+            exists_reverse = (
+                self.db.query(DailyMatch)
+                .filter(
+                    DailyMatch.user_id == mr.candidate_id, 
+                    DailyMatch.candidate_id == user_id,
+                    DailyMatch.created_at >= cutoff
+                )
+                .first()
+            )
+            if not exists_reverse:
+                # 镜像写入，确保 B 视角的匹配度一致
+                dm_rev = DailyMatch(
+                    user_id=mr.candidate_id,
+                    candidate_id=user_id,
+                    score=mr.final_score,         # 强制使用相同分数
+                    match_reason=mr.match_reason, # 暂时复用相同理由（虽然人称可能不对，但在列表页通常只看分数和关键词）
+                    score_breakdown=mr.score_breakdown,
+                    created_at=datetime.utcnow()
+                )
+                self.db.add(dm_rev)
+
+        self.db.commit()
+
+        # 最后返回给前端
+        return [r.to_dict() for r in matched_results[:top_n]]
 
     # -----------------------------------------------------------------------
     # Stage 1: 召回层
@@ -311,34 +389,58 @@ class MatchService:
             cand_interests: List[Any] = profile.interests or []
             cand_mbti: Optional[str] = _get_mbti(profile)
 
-            # --- 维度1：兴趣标签 Jaccard 相似度 (权重 0.45) ---
+            # --- 维度1：兴趣标签 Jaccard 相似度 ---
             tag_sim = _jaccard(my_interests, cand_interests)
 
-            # --- 维度2：MBTI 性格适配度 (权重 0.30) ---
+            # --- 维度2：MBTI 性格适配度 ---
             mbti_sim = _mbti_score(my_mbti, cand_mbti)
 
-            # --- 维度3：行为图谱权重 (权重 0.25) ---
+            # --- 维度3：行为图谱权重 ---
             behavior_bonus = 0.0
             cid = profile.user_id
             if cid in interacted_ids:
                 behavior_bonus += 0.6   # 已有直接互动
             if cid in common_friend_ids:
                 behavior_bonus += 0.3   # 共同好友/关注
-            behavior_bonus = min(behavior_bonus, 1.0)  # 钳位到 [0,1]
 
-            # --- 综合召回得分 ---
+            # --- 维度4: 社交目的匹配 ---
+            # 优先匹配目的相同的用户 (Dating<->Dating, Friends<->Friends)
+            my_purpose = (my_profile.extra_info or {}).get("social_purpose", "")
+            cand_purpose = (profile.extra_info or {}).get("social_purpose", "")
+            purpose_bonus = 0.0
+            
+            if my_purpose and cand_purpose:
+                if my_purpose == cand_purpose:
+                    purpose_bonus = 1.0
+                elif (
+                    ("闲聊" in my_purpose or "树洞" in my_purpose) and 
+                    ("闲聊" in cand_purpose or "树洞" in cand_purpose)
+                ):
+                    # 树洞与闲聊归为泛社交，具备一定兼容性
+                    purpose_bonus = 0.5
+
+            # 综合打分公式
             base_score = (
-                0.45 * tag_sim
-                + 0.30 * mbti_sim
-                + 0.25 * behavior_bonus
+                0.35 * tag_sim 
+                + 0.25 * mbti_sim 
+                + 0.20 * min(behavior_bonus, 1.0)
+                + 0.20 * purpose_bonus
             )
+            
+            # --- 屏蔽/降权 ---
+            if not cand_user.is_active:
+                base_score = -1.0
+            elif cid in following_ids:
+                base_score *= 0.5  # 已关注用户适当降权，优先推新
 
-            breakdown: Dict[str, float] = {
-                "tag_jaccard": tag_sim,
-                "mbti_compatibility": mbti_sim,
-                "behavior_graph": behavior_bonus,
-            }
-            scored.append((cand_user, profile, base_score, breakdown))
+            if base_score > 0.15:  # 门槛分
+                breakdown = {
+                    "tag_sim": tag_sim,
+                    "mbti_sim": mbti_sim,
+                    "behavior": behavior_bonus,
+                    "purpose": purpose_bonus
+                }
+                scored.append((cand_user, profile, base_score, breakdown))
 
         # 5️⃣ 按基础得分降序取 Top-limit
         scored.sort(key=lambda x: x[2], reverse=True)

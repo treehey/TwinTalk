@@ -117,8 +117,15 @@ class ProfileEngine:
                     user.nickname = val
                 extra["twin_nickname"] = val
             elif order == 2:
-                extra["profession"] = val
+                # Age / Gender
+                extra["age_gender"] = val
             elif order == 3:
+                # City
+                extra["city"] = val
+            elif order == 4:
+                # Profession
+                extra["profession"] = val
+            elif order == 5:
                 # "MBTI, 三个词" — try to split MBTI from keywords
                 parts = val.replace("，", ",").split(",", 1)
                 if len(parts) == 2:
@@ -129,19 +136,27 @@ class ProfileEngine:
                     extra["personality_keywords"] = keywords[:3]
                 else:
                     extra["mbti"] = val
-            elif order == 4:
+            elif order == 6:
+                # Hobbies
                 hobbies = [h.strip() for h in val.replace("、", ",").split(",") if h.strip()]
                 extra["top_hobbies"] = hobbies[:3]
-            elif order == 5:
-                extra["current_focus"] = val
-            elif order == 6:
-                extra["future_goals"] = val
             elif order == 7:
-                extra["communication_preference"] = val
+                # Current Focus
+                extra["current_focus"] = val
             elif order == 8:
+                # Future Goals
+                extra["future_goals"] = val
+            elif order == 9:
+                # Communication Preference
+                extra["communication_preference"] = val
+            elif order == 10:
+                # Avoided Topics
                 avoided = val.strip()
                 if avoided and avoided not in ("没有", "没有雷点", "无"):
                     extra["avoided_topics"] = avoided
+            elif order == 11:
+                # Social Purpose
+                extra["social_purpose"] = val
 
         return extra
 

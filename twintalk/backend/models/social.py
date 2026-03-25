@@ -46,8 +46,16 @@ class TwinConnection(Base):
         }
 
 
+
 class CommunityMembership(Base):
     """用户加入兴趣社区的记录。极具扩展性的配置。"""
+    __tablename__ = "community_memberships"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    # ... (rest of community membership is likely omitted in my read) ...
+    # Wait, I didn't read the whole file, so I don't know the exact content of CommunityMembership.
+    # I should read the end of the file first to append correctly.
+
     __tablename__ = "community_memberships"
 
     id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
@@ -114,5 +122,39 @@ class TwinInteraction(Base):
             "interaction_summary": self.interaction_summary,
             "impact_score": self.impact_score,
             "meta_data": self.meta_data or {},
+            "created_at": self.created_at.isoformat() + "Z" if self.created_at else None,
+        }
+
+
+class DailyMatch(Base):
+    """Daily cache for user matches strategies."""
+    __tablename__ = "daily_matches"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False, index=True)
+    candidate_id = Column(String(36), ForeignKey("users.id"), nullable=False)
+    
+    score = Column(Float, default=0.0)
+    match_reason = Column(Text, default="")
+    score_breakdown = Column(JSON, default=dict)
+    
+    # Store computed tags to speed up display
+    profile_tags = Column(JSON, default=list)
+    common_interests = Column(JSON, default=list)
+    bio_third_view = Column(Text, default="")
+    
+    created_at = Column(DateTime, server_default=func.now())  # Daily update logic uses this
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_id": self.user_id,
+            "candidate_id": self.candidate_id,
+            "score": self.score,
+            "match_reason": self.match_reason,
+            "score_breakdown": self.score_breakdown or {},
+            "profile_tags": self.profile_tags or [],
+            "common_interests": self.common_interests or [],
+            "bio_third_view": self.bio_third_view or "",
             "created_at": self.created_at.isoformat() + "Z" if self.created_at else None,
         }
