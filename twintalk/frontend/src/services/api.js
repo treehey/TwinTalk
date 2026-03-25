@@ -1,7 +1,8 @@
 /** API service — communicates with Flask backend */
 
-const HOST = '';
+const HOST = import.meta.env.VITE_API_BASE_URL || '';
 const API_BASE = `${HOST}/api`;
+
 
 function getUserId() {
   return localStorage.getItem('dt_user_id');
